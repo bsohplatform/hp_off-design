@@ -249,7 +249,7 @@ if __name__ == '__main__':
     comp_inputs = Comp_Inputs()
     cond_inputs = PHX_Inputs()
     evap_inputs = PHX_Inputs()
-    Tcond_in = 31.9+273.15
+    Tcond_in = 32.1+273.15
     Pcond = 101300.0
     Tevap_in = 12.1+273.15
     Pevap = 101300.0
@@ -267,8 +267,8 @@ if __name__ == '__main__':
     outputs = Outputs()
 
     cycle_inputs.layout = 'bas'
-    cycle_inputs.DSH = 0.6
-    dsc = PropsSI("T","P",(22.6+0.101300)*1.0e5,"Q",0.0,"REFPROP::R466A.mix")-31.9-273.15
+    cycle_inputs.DSH = 7.9 - PropsSI("T","P",(8.5+1.01300)*1.0e5, "Q", 1.0, "REFPROP::R466A.mix") -273.15
+    dsc = PropsSI("T","P",(22.6+1.01300)*1.0e5,"Q",0.0,"REFPROP::R466A.mix")-31.9-273.15
     cycle_inputs.DSC = dsc
     cycle_inputs.cond_x = 0.01
     cycle_inputs.M_ref = 8.40615
