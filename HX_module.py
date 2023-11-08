@@ -22,6 +22,15 @@ class HX_module:
                 self.beta = 60.0 if self.phx_inputs.beta == 0 else self.phx_inputs.beta
             else:
                 self.V = 1.0
+        elif hx_type == 'fthe':
+            self.fthx_inputs = Inputs
+            if cor == True:
+                self.Dh = self.fthx_inputs.Dh
+            else:
+                self.V = 1.0
+        else:
+            print('Undefined HX type is entered')
+                
     def PHX(self, purpose, primary_in, primary_out, secondary_in, secondary_out, noHX):
         cor = self.cor
         Dh = self.Dh
@@ -410,6 +419,9 @@ class HX_module:
         T_pp = [abs(T1-T2) for T1, T2 in zip(T_primary, T_secondary)]
         T_pp = np.min(T_pp)
         return(primary_in, primary_out, secondary_in, secondary_out, Q, mean_d, T_pp, err_index)
+    
+    def FTHX(self, purpose, primary_in, primary_out, secondary_in, secondary_out, noHX):
+    
     
 if __name__ == '__main__':
     from HP_dataclass import*
