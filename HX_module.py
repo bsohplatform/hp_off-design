@@ -58,8 +58,8 @@ class HX_module:
         
         a_PHX = 1 
         if noHX == 0:
-            T_sec_lb = secondary_out.T
-            T_sec_ub = secondary_out.T if purpose == 'cond' else PropsSI('T','P',secondary_in.p,'Q',0.0,secondary_in.Y)
+            T_sec_lb = secondary_out.T if purpose == 'evap' else secondary_out.T-50
+            T_sec_ub = secondary_out.T if purpose == 'cond' else secondary_out.T+50
             c_sec = secondary_out.c
             v_sec = secondary_out.v
             l_sec = secondary_out.l
@@ -72,8 +72,8 @@ class HX_module:
                 UA = self.phx_inputs.UA*pow(mdot_sec/self.phx_inputs.mdot_nominal,0.8)
             
         elif noHX == 1:
-            T_sec_lb = secondary_in.T
-            T_sec_ub = PropsSI('T','P',secondary_out.p,'Q',0.0,secondary_out.Y) if purpose == 'cond' else secondary_in.T
+            T_sec_lb = secondary_in.T if purpose == 'cond' else secondary_in.T-50
+            T_sec_ub = secondary_in.T if purpose == 'evap' else secondary_in.T+50
             
             c_sec = secondary_in.c
             v_sec = secondary_in.v
@@ -421,7 +421,45 @@ class HX_module:
         return(primary_in, primary_out, secondary_in, secondary_out, Q, mean_d, T_pp, err_index)
     
     def FTHX(self, purpose, primary_in, primary_out, secondary_in, secondary_out, noHX):
-    
+        cor = self.cor
+        Dh = self.Dh
+        N_element = self.fthx_inputs.N_element
+        N_turn = self.fthx_inputs.N_turn
+        N_row = self.fthx_inputs.N_row
+        
+        G_primary = np.zeros(shape=(N_element*N_turn+1, N_row))
+        x_primary = np.zeros(shape=(N_element*N_turn+1, N_row))
+        T_primary = np.zeros(shape=(N_element*N_turn+1, N_row))
+        h_primary = np.zeros(shape=(N_element*N_turn+1, N_row))
+        htc_primary = np.zeros(shape=(N_element*N_turn+1, N_row))
+        Re_primary = np.zeros(shape=(N_element*N_turn+1, N_row))
+        pr_primary = np.zeros(shape=(N_element*N_turn+1, N_row))
+        f_primary = np.zeros(shape=(N_element*N_turn+1, N_row))
+        p_primary = np.zeros(shape=(N_element*N_turn+1, N_row))
+        d_primary = np.zeros(shape=(N_element*N_turn+1, N_row))
+        
+        T_secondary = np.zeros(shape=(N_element*N_turn+1, N_row))
+        
+        UA_tot = np.ones(shape=(N_element*N_turn+1, N_row))
+        eps = np.zeros(shape=(N_element*N_turn+1, N_row))
+        Q_trans = np.zeros(shape=(N_element*N_turn+1, N_row))
+        
+        
+        a_FTHX = 1
+        
+        if noHX == 0:
+            T_sec_lb = secondary_out.T
+            T_sec_ub = secondary_out.T if purpose == 'cond' else max(PropsSI('T','P',secondary_in.p,'Q',0.0,secondary_in.Y),secondary_out.T+90)
+            c_sec = secondary_out.c
+            v_sec = secondary_out.v
+            l_sec = secondary_out.l
+            pr_sec = secondary_out.pr
+            try:
+                mdot_sec = secondary_out.m
+            except:
+                mdot_sec = secondary_in.m
+            if cor == False:
+                UA = self.phx_inputs.UA*pow(mdot_sec/self.phx_inputs.mdot_nominal,0.8)
     
 if __name__ == '__main__':
     from HP_dataclass import*
