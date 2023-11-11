@@ -2,11 +2,11 @@ from HP_dataclass import *
 from COMP_module import *
 from HX_module import *
 from CoolProp.CoolProp import PropsSI
+import numpy as np
 
 class VCHP_off:
-    def __init__(self, evap_BC, cond_BC):
-        self.evap_BC = evap_BC
-        self.cond_BC = cond_BC
+    def __init__(self, BC):
+        self.BC = BC
         
     def Input_Processing(self, InCond, OutCond, InEvap, OutEvap):
         if InCond.p <= 0.0:
@@ -105,103 +105,115 @@ class VCHP_off:
         OutCond_REF.pcr = pcr
         InEvap_REF.pcr = pcr
         OutEvap_REF.pcr = pcr
+        f = 0.001
+        target_matrix = np.zeros(shape=(2,2))
         
         comp = COMP_module()
         cond = HX_module(hx_type=Cond_Inputs.htype, cor = Cond_Inputs.cor, Inputs=Cond_Inputs)
         evap = HX_module(hx_type=Evap_Inputs.htype, cor = Evap_Inputs.cor, Inputs=Evap_Inputs)
-
-        cond_p_ub = pcr
+        
+        if noEvap == 0:
+            evap_p_ub = PropsSI('P','T',OutEvap.T, 'Q', 1.0, OutEvap_REF.Y)
+        else:
+            evap_p_ub = PropsSI('P','T',InEvap.T, 'Q', 1.0, InEvap_REF.Y)
+        evap_p_lb = 101300.0
+        
         if noCond == 0:
             cond_p_lb = PropsSI('P','T',OutCond.T, 'Q', 1.0, OutCond_REF.Y)
         else:
             cond_p_lb = PropsSI('P','T',InCond.T, 'Q', 1.0, InCond_REF.Y)
-            
-        cond_a = 1    
+        cond_p_ub = pcr
         
-        while cond_a:
-            InCond_REF.p = 0.5*(cond_p_ub + cond_p_lb)
-            InCond_REF.Ts = PropsSI('T','P',InCond_REF.p,'Q',1.0, InCond_REF.Y )
-            InCond_REF.hl = PropsSI('H','P',InCond_REF.p,'Q',0.0, InCond_REF.Y )
-            InCond_REF.hg = PropsSI('H','P',InCond_REF.p,'Q',1.0, InCond_REF.Y )  
-                
-            if noEvap == 0:
-                    evap_p_ub = PropsSI('P','T',OutEvap.T, 'Q', 1.0, OutEvap_REF.Y)
-            else:
-                evap_p_ub = PropsSI('P','T',InEvap.T, 'Q', 1.0, InEvap_REF.Y)
-            evap_p_lb = 101300.0
-            
-            evap_a = 1
-            
-            while evap_a:
-                OutEvap_REF.p = 0.5*(evap_p_ub+evap_p_lb)
-                OutEvap_REF.Ts = PropsSI('T','P',OutEvap_REF.p,'Q',1.0, OutEvap_REF.Y )
-                OutEvap_REF.hl = PropsSI('H','P',OutEvap_REF.p,'Q',0.0, OutEvap_REF.Y )
-                OutEvap_REF.hg = PropsSI('H','P',OutEvap_REF.p,'Q',1.0, OutEvap_REF.Y )
-                
-                (OutEvap_REF, InCond_REF, Outputs.comp_W, Outputs.comp_eff_isen, Outputs.DSH, evap_a) = comp.Off(OutEvap_REF, InCond_REF, Comp_Inputs, DSH = Cycle_Inputs.DSH)
-                OutCond_REF.m = InCond_REF.m
-                InEvap_REF.m = OutEvap_REF.m
-                
-                if Cond_Inputs.htype == 'phx':                    
-                    (InCond_REF, OutCond_REF, InCond, OutCond, cond_Q, cond_rho, Outputs.cond_T_pp, err_cond_index)=cond.PHX('cond',InCond_REF, OutCond_REF, InCond, OutCond, noCond)
-                
-                if Evap_Inputs.htype == 'phx':
-                    (InEvap_REF, OutEvap_REF, InEvap, OutEvap, evap_Q, evap_rho, Outputs.evap_T_pp, err_evap_index)=evap.PHX('evap',InEvap_REF, OutEvap_REF, InEvap, OutEvap, noEvap)
-                    
-                if InEvap_REF.h == 0:
-                    if err_evap_index == 1:
-                        evap_p_lb = OutEvap_REF.p
-                    else:
-                        evap_p_ub = OutEvap_REF.p
-                    
-                    err_evap_p = 1
+        a = 1
+        
+        while a:
+            for i in range(2):
+                if i == 0:
+                    OutEvap_P = 0.5*(evap_p_ub+evap_p_lb)*(1-f)
                 else:
-                    if self.evap_BC == 'q':
-                        err_evap_p = (Cycle_Inputs.evap_Q - evap_Q)/Cycle_Inputs.evap_Q_cal
-                    else:    
-                        err_evap_p = (InEvap_REF.h - OutCond_REF.h)/OutCond_REF.h
-                        
-                    if err_evap_p < 0:
-                        evap_p_lb = OutEvap_REF.p
+                    OutEvap_P = 0.5*(evap_p_ub+evap_p_lb)*(1+f)
+                
+                for ii in range(2):
+                    if ii == 0:
+                        InCond_P = 0.5*(cond_p_ub + cond_p_lb)*(1-f)
                     else:
-                        evap_p_ub = OutEvap_REF.p
+                        InCond_P = 0.5*(cond_p_ub + cond_p_lb)*(1+f)
+                                                        
+                    OutEvap_REF.p = OutEvap_P
+                    OutEvap_REF.Ts = PropsSI('T','P',OutEvap_REF.p,'Q',1.0, OutEvap_REF.Y )
+                    OutEvap_REF.hl = PropsSI('H','P',OutEvap_REF.p,'Q',0.0, OutEvap_REF.Y )
+                    OutEvap_REF.hg = PropsSI('H','P',OutEvap_REF.p,'Q',1.0, OutEvap_REF.Y )
+            
+                    InCond_REF.p = InCond_P
+                    InCond_REF.Ts = PropsSI('T','P',InCond_REF.p,'Q',1.0, InCond_REF.Y )
+                    InCond_REF.hl = PropsSI('H','P',InCond_REF.p,'Q',0.0, InCond_REF.Y )
+                    InCond_REF.hg = PropsSI('H','P',InCond_REF.p,'Q',1.0, InCond_REF.Y )  
                     
-                if abs(err_evap_p) < 1.0e-3:
-                    evap_a = 0
-                elif evap_p_ub - evap_p_lb < 0.1:
-                    evap_a = 0
-            
-            if self.cond_BC == 'dsc':
-                cal_h = PropsSI('H','T',OutCond_REF.Ts-Cycle_Inputs.DSC,'P',OutCond_REF.p,OutCond_REF.Y)
-                err_cond_p = (cal_h - OutCond_REF.h)/cal_h
-            elif self.cond_BC == 'x':
-                cal_h = (OutCond_REF.hg - OutCond_REF.hl)*Cycle_Inputs.cond_x+OutCond_REF.hl
-                err_cond_p = (cal_h - OutCond_REF.h)/cal_h
-            elif self.cond_BC == 'q':
-                err_cond_p = (cond_Q - Cycle_Inputs.cond_Q)/Cycle_Inputs.cond_Q
-            elif self.cond_BC == 'm':
-                try:
-                    dl = PropsSI('D','T',OutCond_REF.T,'P',OutCond_REF.p,OutCond_REF.Y)
-                except:
-                    dl = PropsSI('D','P',OutCond_REF.p,'Q', 0.0, OutCond_REF.Y)
+                    (OutEvap_REF, InCond_REF, Outputs.comp_W, Outputs.comp_eff_isen, Outputs.DSH, evap_a) = comp.Off(OutEvap_REF, InCond_REF, Comp_Inputs, DSH = Cycle_Inputs.DSH)
+                    OutCond_REF.m = InCond_REF.m
+                    InEvap_REF.m = OutEvap_REF.m
                     
-                M_ref_cal = (cond.V*cond_rho+evap.V*evap_rho+Cycle_Inputs.V_rec*dl)
-                err_cond_p = (M_ref_cal - Cycle_Inputs.M_ref)/Cycle_Inputs.M_ref
-            
-            if err_cond_p < 0:
-                cond_p_lb = InCond_REF.p
-            else:
-                cond_p_ub = InCond_REF.p    
-            
-            if abs(err_cond_p) < 1.0e-3:
-                cond_a = 0
-            elif cond_p_ub - cond_p_lb < 0.1:
-                cond_a = 0
-        try:
-            dl = PropsSI('D','T',OutCond_REF.T,'P',OutCond_REF.p,OutCond_REF.Y)
-        except:
-            dl = PropsSI('D','P',OutCond_REF.p,'Q', 0.0, OutCond_REF.Y)
-        Outputs.M_ref = (cond.V*cond_rho+evap.V*evap_rho+Cycle_Inputs.V_rec*dl)
+                    if Cond_Inputs.htype == 'phx':                    
+                        (InCond_REF, OutCond_REF, InCond, OutCond, cond_Q, cond_rho, Outputs.cond_T_pp, err_p_cond)=cond.PHX('cond',InCond_REF, OutCond_REF, InCond, OutCond, noCond)
+                        
+                    if err_p_cond == 1:
+                        cond_p_lb = 0.5*(cond_p_ub + cond_p_lb)
+                        break
+                    else:    
+                        InEvap_REF = OutEvap_REF
+                        InEvap_REF.h = OutCond_REF.h
+                        InEvap_REF.T = PropsSI("T","H",InEvap_REF.h,"P",InEvap_REF.p,InEvap_REF.Y)
+                        
+                        if Evap_Inputs.htype == 'phx':
+                            (InEvap_REF, OutEvap_REF, InEvap, OutEvap, evap_Q, evap_rho, Outputs.evap_T_pp, err_p_evap)=evap.PHX('evap',InEvap_REF, OutEvap_REF, InEvap, OutEvap, noEvap)
+                        
+                        if err_p_evap == 1:
+                            evap_p_ub = 0.5*(evap_p_ub+evap_p_lb)
+                            break
+                        else:
+                            if self.BC == 'dsc':
+                                cc = Cycle_Inputs.DSC
+                                target_matrix[i,ii] = OutCond_REF.Ts - OutCond_REF.T
+                            elif self.BC == 'm':
+                                cc = Cycle_Inputs.M_ref
+                                target_matrix[i,ii] = (cond.V*cond_rho+evap.V*evap_rho)
+                            elif self.BC == 'x':
+                                cc = Cycle_Inputs.cond_x
+                                target_matrix[i,ii] = (OutCond_REF.h - OutCond_REF.hl)/(OutCond_REF.hg - OutCond_REF.hl)
+                
+                if err_p_evap == 1:
+                    break
+                if err_p_cond == 1:
+                    break
+                
+            if err_p_evap != 1:
+                cond_j1 = 0.5*(target_matrix[0,0]+target_matrix[1,0])
+                cond_j2 = 0.5*(target_matrix[0,1]+target_matrix[1,1])
+                evap_j1 = 0.5*(target_matrix[0,0]+target_matrix[0,1])
+                evap_j2 = 0.5*(target_matrix[1,0]+target_matrix[1,1])
+                
+                dcond_j = (cond_j2 - cond_j1)
+                devap_j = (evap_j2 - evap_j1)
+                if abs(dcond_j) > abs(devap_j):    
+                    if abs(cond_j2-cc) > abs(cond_j1-cc):
+                        cond_p_ub = 0.5*(cond_p_ub + cond_p_lb)
+                    else:
+                        cond_p_lb = 0.5*(cond_p_ub + cond_p_lb)
+                else:    
+                    if abs(evap_j2-cc) > abs(evap_j1-cc):
+                        evap_p_ub = 0.5*(evap_p_ub+evap_p_lb)
+                    else:
+                        evap_p_lb = 0.5*(evap_p_ub+evap_p_lb)
+                        
+                err_BC = abs((0.5*(cond_j1+cond_j2)-cc)/cc)
+                kk = (cond_p_ub - cond_p_lb)/(0.5*(cond_p_ub + cond_p_lb)) + (evap_p_ub - evap_p_lb)/(0.5*(evap_p_ub+evap_p_lb))
+                
+                if err_BC < 1.0e-3:
+                    a = 0
+                elif kk < 1.0e-3:
+                    a = 0
+                    
+        Outputs.M_ref = (cond.V*cond_rho+evap.V*evap_rho)
         Outputs.cond_x = (OutCond_REF.h - OutCond_REF.hl)/(OutCond_REF.hg - OutCond_REF.hl)
         Outputs.DSC = OutCond_REF.Ts - OutCond_REF.T
         Outputs.evap_Q = evap_Q
@@ -244,7 +256,7 @@ class VCHP_off:
 if __name__ == '__main__':
     # 대체 냉매 실험장치
     #input_ref = 'REFPROP::R32[0.76]&R125[0.07731]&CF3I[0.16269]'
-    input_ref = 'REFPROP::R466A.mix'
+    input_ref = 'R410A'
     cycle_inputs = Cycle_Inputs()
     comp_inputs = Comp_Inputs()
     cond_inputs = PHX_Inputs()
@@ -267,10 +279,10 @@ if __name__ == '__main__':
     outputs = Outputs()
 
     cycle_inputs.layout = 'bas'
-    cycle_inputs.DSH = 7.9 - PropsSI("T","P",(8.5+1.01300)*1.0e5, "Q", 1.0, "REFPROP::R466A.mix") -273.15
-    dsc = PropsSI("T","P",(22.6+1.01300)*1.0e5,"Q",0.0,"REFPROP::R466A.mix")-31.9-273.15
+    cycle_inputs.DSH = 5.0
+    dsc = 1.0
     cycle_inputs.DSC = dsc
-    cycle_inputs.cond_x = 0.01
+    cycle_inputs.cond_x = -0.05
     cycle_inputs.M_ref = 8.40615
     cycle_inputs.V_rec = 0.006
     
@@ -308,7 +320,7 @@ if __name__ == '__main__':
     evap_inputs.mult_sec = 1.0
     evap_inputs.mult_A = 0.4
     
-    bas_off = VCHP_off('h','dsc')
+    bas_off = VCHP_off('x')
     (InCond, OutCond, InEvap, OutEvap, noCond, noEvap) = bas_off.Input_Processing(InCond, OutCond, InEvap, OutEvap)
     (InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs) = bas_off.OffDesign_Solver(InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, cycle_inputs, comp_inputs, cond_inputs, evap_inputs, outputs, noCond, noEvap)
     bas_off.Result_summary(InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs)
