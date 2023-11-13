@@ -31,13 +31,15 @@ class Cycle_Inputs:
     V_rec: float = 0.0
 @dataclass
 class Comp_Inputs:
+    mode : float = 'poly'
     V_dis: float = 0.0 # Displacement volume
     C_gap: float = 0.0 # Clearance factor (clearance/displacement)
     n_poly: float = 0.0 # Polytropic number
     eff_mech: float = 1.0 # mechanical_efficiency
     frequency: float = 60.0 # Compressor frequency [Hz]
     extra_work: float = 0.0
-
+    comp_pkl : str = ''
+    
 @dataclass
 class PHX_Inputs:
     N_element: int = 30
@@ -52,7 +54,7 @@ class PHX_Inputs:
     A_flow: float = 0.0
     UA: float = 0.0
     dp: float = 0.0
-    mdot_nominal:float = 0.0
+    mdot_nominal_ref:float = 0.0
     cor: bool = False
     htype: str = 'phx'
     qloss_frac: float = 0.0
@@ -63,9 +65,13 @@ class PHX_Inputs:
 @dataclass
 class FTHX_Inputs:
     UA : float = 1.8e3
+    dp : float = 0.0
     N_element : int = 30
     N_row: int = 3
     N_turn : int = 3
+    htype: str = 'fthx'
+    cor: bool = False
+    mdot_nominal_sec : float = 0.0
     
 @dataclass
 class Outputs:
@@ -80,19 +86,7 @@ class Outputs:
     cond_T_pp: float = 0.0
     evap_T_pp: float = 0.0
     
-    comp_eff_isen: float = 0.0
-
-
-class Aux_fn:
-    @staticmethod
-    def PropCal(Fluid_flow, outpar: str, par1: str, par2: str):
-        prop = {'T':Fluid_flow.T, 'P':Fluid_flow.p, 'H':Fluid_flow.h, 
-                         'D':Fluid_flow.d, 'C': Fluid_flow.c, 'L': Fluid_flow.l}
-                
-        outval = PropsSI(outpar,par1,prop[par1],par2,prop[par2],Fluid_flow.Y)
-        
-        return outval
-    
+    comp_eff_isen: float = 0.0    
 
 if __name__ == '__main__':
     cond = Fluid_flow(Y='Water', T=300, p = 101300)
