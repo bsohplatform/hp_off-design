@@ -59,6 +59,14 @@ class PHX_Inputs:
     mult_pri: float = 1.0
     mult_sec: float = 1.0
     mult_A: float = 1.0
+    
+@dataclass
+class FTHX_Inputs:
+    UA : float = 1.8e3
+    N_element : int = 30
+    N_row: int = 3
+    N_turn : int = 3
+    
 @dataclass
 class Outputs:
     comp_W: float = 0.0

@@ -26,6 +26,9 @@ class HX_module:
             self.fthx_inputs = Inputs
             if cor == True:
                 self.Dh = self.fthx_inputs.Dh
+                self.A_cx = self.Dh**2*pi/4
+                self.A_flow = 2*pi*self.Dh*self.fthx_inputs.L_pass
+                self.V = self.Dh**2*pi/4*self.fthx_inputs.L_pass*self.fthx_inputs.N_turn*self.fthx_inputs.N_row
             else:
                 self.V = 1.0
         else:
@@ -69,7 +72,7 @@ class HX_module:
             except:
                 mdot_sec = secondary_in.m
             if cor == False:
-                UA = self.phx_inputs.UA*pow(mdot_sec/self.phx_inputs.mdot_nominal,0.8)
+                UA = self.phx_inputs.UA*pow(primary_in.m/self.phx_inputs.mdot_nominal_ref,0.8)
             
         elif noHX == 1:
             T_sec_lb = secondary_in.T if purpose == 'cond' else secondary_in.T-50
@@ -84,7 +87,7 @@ class HX_module:
             except:
                 mdot_sec = secondary_out.m
             if cor == False:
-                UA = self.phx_inputs.UA*pow(mdot_sec/self.phx_inputs.mdot_nominal,0.8)
+                UA = self.phx_inputs.UA*pow(primary_in.m/self.phx_inputs.mdot_nominal_ref,0.8)
                 
         else:
             c_sec = 0.5*(secondary_in.c + secondary_out.c)
@@ -96,7 +99,8 @@ class HX_module:
             T_sec_ub = secondary_out.T
             mdot_sec_lb = 0;
             mdot_sec_ub = 3*(primary_in.hg - primary_in.hl)*primary_in.m/c_sec/(secondary_out.T - secondary_in.T) if purpose == 'cond' else 3*(primary_in.hg - primary_in.hl)*primary_in.m/c_sec/(secondary_in.T - secondary_out.T)
-            
+            if cor == False:
+                UA = self.phx_inputs.UA*pow(primary_in.m/self.phx_inputs.mdot_nominal_ref,0.8)
         
         T_primary[0] = primary_in.T
         h_primary[0] = primary_in.h
@@ -106,12 +110,17 @@ class HX_module:
         
         x_primary[0] = (h_primary[0]-hl_primary)/(hg_primary - hl_primary)
         
+        if x_primary[0] > 0 and x_primary[0] < 1:
+            dl_primary = PropsSI('D','P',p_primary[0],'Q',0.0, primary_in.Y)
+            dg_primary = PropsSI('D','P',p_primary[0],'Q',1.0, primary_in.Y)
+            d_primary[0] = 1/(x_primary[0]/dg_primary+(1-x_primary[0])/dl_primary)
+        else:
+            d_primary[0] = PropsSI('D','T',T_primary[0],'P',p_primary[0],primary_in.Y)
+            c_primary = PropsSI('C','T',T_primary[0],'P',p_primary[0],primary_in.Y)
+                
         if cor == True:
             G_primary_ref = primary_in.m/self.A_cx
             if x_primary[0] > 0 and x_primary[0] < 1:
-                dl_primary = PropsSI('D','P',p_primary[0],'Q',0.0, primary_in.Y)
-                dg_primary = PropsSI('D','P',p_primary[0],'Q',1.0, primary_in.Y)
-                d_primary[0] = 1/(x_primary[0]/dg_primary+(1-x_primary[0])/dl_primary)
                 vl_primary = PropsSI('V','P',p_primary[0],'Q',0.0, primary_in.Y)
                 vg_primary = PropsSI('V','P',p_primary[0],'Q',1.0, primary_in.Y)
                 cl_primary = PropsSI('C','P',p_primary[0],'Q',0.0, primary_in.Y)
@@ -121,14 +130,13 @@ class HX_module:
                 Re_primary[0] = G_primary[0]*self.Dh/vl_primary
                 pr_primary[0] = cl_primary*vl_primary/ll_primary
             else:
-                d_primary[0] = PropsSI('D','T',T_primary[0],'P',p_primary[0],primary_in.Y)
                 v_primary = PropsSI('V','T',T_primary[0],'P',p_primary[0],primary_in.Y)
-                c_primary = PropsSI('C','T',T_primary[0],'P',p_primary[0],primary_in.Y)
                 l_primary = PropsSI('L','T',T_primary[0],'P',p_primary[0],primary_in.Y)
                 
                 G_primary[0] = G_primary_ref
                 Re_primary[0] = G_primary_ref*self.Dh/v_primary
                 pr_primary[0] = c_primary*v_primary/l_primary
+        
         
         while a_PHX:
             T_sec = 0.5*(T_sec_lb + T_sec_ub)
@@ -137,8 +145,6 @@ class HX_module:
             
             if noHX == 2:
                 mdot_sec = 0.5*(mdot_sec_lb + mdot_sec_ub)
-                if cor == False:
-                    UA = self.phx_inputs.UA*pow(mdot_sec/self.phx_inputs.mdot_nominal,0.8)
             
             dT = T_primary[0]-T_secondary[0]
             if (dT < 0.0 and purpose == 'cond') or (dT > 0.0 and purpose == 'evap'):
@@ -182,14 +188,12 @@ class HX_module:
     
                 UA_tot[0] = 1/(1/(htc_primary[0]*self.phx_inputs.mult_pri)+self.R_plate+1/(htc_secondary*self.phx_inputs.mult_sec))*self.A_flow/(self.phx_inputs.N_element-1)
                 dp_primary = f_primary[0]*G_primary[0]**2*self.phx_inputs.L_vert/(self.phx_inputs.N_element-1)/(d_primary[0]*self.Dh)/2                
-                
             else:
-                if x_primary[0] < 0 or x_primary[0] > 1:
-                    c_primary = PropsSI('C','T',T_primary[0],'P',p_primary[0],primary_in.Y)
-                    
-                UA_tot[0] = UA/(self.phx_inputs.N_element-1)
+                UA_const = UA/(self.phx_inputs.N_element-1)
+                dp_const = self.phx_inputs.dp/(self.phx_inputs.N_element-1)*primary_in.p
                 
-                dp_primary = self.phx_inputs.dp*primary_in.p
+                UA_tot[0] = UA_const
+                dp_primary = dp_const
                 
                 
             if x_primary[0] > 0 and x_primary[0] < 1:
@@ -217,24 +221,21 @@ class HX_module:
                 
                 T_primary[jj+1] = PropsSI('T','H',h_primary[jj+1],'P',p_primary[jj+1],primary_in.Y)
                 dT = T_primary[jj+1]-T_secondary[jj+1]        
-                '''
-                if (dT < 0.0 and purpose == 'cond') or (dT > 0.0 and purpose == 'evap'):
-                    err_index = 1 # Temperature Reverse
-                    break
+
+                if x_primary[jj+1] > 0 and x_primary[jj+1] < 1:
+                    dl_primary = PropsSI('D','P',p_primary[jj+1],'Q',0.0, primary_in.Y)
+                    dg_primary = PropsSI('D','P',p_primary[jj+1],'Q',1.0, primary_in.Y)
+                    d_primary[jj+1] = 1/(x_primary[jj+1]/dg_primary+(1-x_primary[jj+1])/dl_primary)
                 else:
-                    err_index = 0
-                '''
-                
+                    d_primary[jj+1] = PropsSI('D','T',T_primary[jj+1],'P',p_primary[jj+1],primary_in.Y)
+                    c_primary = PropsSI('C','T',T_primary[jj+1],'P',p_primary[jj+1],primary_in.Y)
+                    
                 if cor == True:
                     if x_primary[jj+1] > 0 and x_primary[jj+1] < 1:
-                        dl_primary = PropsSI('D','P',p_primary[jj+1],'Q',0.0, primary_in.Y)
-                        dg_primary = PropsSI('D','P',p_primary[jj+1],'Q',1.0, primary_in.Y)
                         vl_primary = PropsSI('V','P',p_primary[jj+1],'Q',0.0, primary_in.Y)
                         vg_primary = PropsSI('V','P',p_primary[jj+1],'Q',1.0, primary_in.Y)
                         cl_primary = PropsSI('C','P',p_primary[jj+1],'Q',0.0, primary_in.Y)
                         ll_primary = PropsSI('L','P',p_primary[jj+1],'Q',0.0, primary_in.Y)
-                            
-                        d_primary[jj+1] = 1/(x_primary[jj+1]/dg_primary+(1-x_primary[jj+1])/dl_primary)
                         
                         G_primary[jj+1] = G_primary_ref*((1-x_primary[jj+1])+x_primary[jj+1]*pow(dl_primary/dg_primary,0.5))
                         Re_primary[jj+1] = G_primary[jj+1]*self.Dh/vl_primary
@@ -260,17 +261,8 @@ class HX_module:
                             else:
                                 qq = qq_cal
                     else:
-                        try:
-                            d_primary[jj+1] = PropsSI('D','T',T_primary[jj+1],'P',p_primary[jj+1],primary_in.Y)
-                            v_primary = PropsSI('V','T',T_primary[jj+1],'P',p_primary[jj+1],primary_in.Y)
-                            c_primary = PropsSI('C','T',T_primary[jj+1],'P',p_primary[jj+1],primary_in.Y)
-                            l_primary = PropsSI('L','T',T_primary[jj+1],'P',p_primary[jj+1],primary_in.Y)
-                        except:
-                            d_primary[jj+1] = PropsSI('D','P',p_primary[jj+1],'Q',0.0, primary_in.Y) if x_primary[jj+1] < 0 else PropsSI('D','P',p_primary[jj+1],'Q',1.0, primary_in.Y)
-                            v_primary = PropsSI('V','P',p_primary[jj+1],'Q',0.0, primary_in.Y) if x_primary[jj+1] < 0 else PropsSI('V','P',p_primary[jj+1],'Q',1.0, primary_in.Y)
-                            c_primary = PropsSI('C','P',p_primary[jj+1],'Q',0.0, primary_in.Y) if x_primary[jj+1] < 0 else PropsSI('C','P',p_primary[jj+1],'Q',1.0, primary_in.Y)
-                            l_primary = PropsSI('L','P',p_primary[jj+1],'Q',0.0, primary_in.Y) if x_primary[jj+1] < 0 else PropsSI('L','P',p_primary[jj+1],'Q',1.0, primary_in.Y)
-                            
+                        v_primary = PropsSI('V','T',T_primary[jj+1],'P',p_primary[jj+1],primary_in.Y)
+                        l_primary = PropsSI('L','T',T_primary[jj+1],'P',p_primary[jj+1],primary_in.Y)    
                         
                         G_primary[jj+1] = G_primary_ref
                         Re_primary[jj+1] = G_primary_ref*self.Dh/v_primary
@@ -289,12 +281,9 @@ class HX_module:
         
                     UA_tot[jj+1] = 1/(1/(htc_primary[jj+1]*self.phx_inputs.mult_pri)+self.R_plate+1/(htc_secondary*self.phx_inputs.mult_sec))*self.A_flow/(self.phx_inputs.N_element-1)
                     dp_primary = f_primary[jj+1]*G_primary[jj+1]**2*self.phx_inputs.L_vert/(self.phx_inputs.N_element-1)/(d_primary[jj+1]*self.Dh)/2
-                    
-                else:
-                    if x_primary[jj+1] < 0 or x_primary[jj+1] > 1:
-                        c_primary = PropsSI('C','T',T_primary[jj+1],'P',p_primary[jj+1],primary_in.Y)
-                    UA_tot[jj+1] = UA/(self.phx_inputs.N_element-1)
-                    dp_primary = self.phx_inputs.dp*primary_in.p
+                else:                        
+                    UA_tot[jj+1] = UA_const
+                    dp_primary = dp_const
                 
                 if x_primary[jj+1] > 0 and x_primary[jj+1] < 1:
                     C_min = c_sec*mdot_sec
@@ -331,10 +320,10 @@ class HX_module:
                     a_PHX = 0
                 else:
                     if noHX == 2:
-                        if mdot_sec_ub - mdot_sec_lb < 1.0e-3:
+                        if (mdot_sec_ub - mdot_sec_lb)/mdot_sec < 1.0e-3:
                             a_PHX = 0
                     else:
-                        if T_sec_ub - T_sec_lb < 0.1:
+                        if (T_sec_ub - T_sec_lb)/T_sec < 1.0e-3:
                             a_PHX = 0
             else:
                 a_PHX = 0
@@ -371,7 +360,7 @@ class HX_module:
             T_pp = [abs(T1-T2) for T1, T2 in zip(T_primary, T_secondary)]
             T_pp = np.min(T_pp)
         return(primary_in, primary_out, secondary_in, secondary_out, Q, mean_d, T_pp, err_index)
-    '''
+    
     def FTHX(self, purpose, primary_in, primary_out, secondary_in, secondary_out, noHX):
         cor = self.cor
         Dh = self.Dh
@@ -379,44 +368,40 @@ class HX_module:
         N_turn = self.fthx_inputs.N_turn
         N_row = self.fthx_inputs.N_row
         
-        G_primary = np.zeros(shape=((N_element+1)*N_turn, N_row))
-        x_primary = np.zeros(shape=((N_element+1)*N_turn, N_row))
-        T_primary = np.zeros(shape=((N_element+1)*N_turn, N_row))
-        h_primary = np.zeros(shape=((N_element+1)*N_turn, N_row))
-        htc_primary = np.zeros(shape=((N_element+1)*N_turn, N_row))
-        Re_primary = np.zeros(shape=((N_element+1)*N_turn, N_row))
-        pr_primary = np.zeros(shape=((N_element+1)*N_turn, N_row))
-        f_primary = np.zeros(shape=((N_element+1)*N_turn, N_row))
-        p_primary = np.zeros(shape=((N_element+1)*N_turn, N_row))
-        d_primary = np.zeros(shape=((N_element+1)*N_turn, N_row))
+        G_primary = np.zeros(shape=(N_element*N_turn, N_row))
+        x_primary = np.zeros(shape=(N_element*N_turn, N_row))
+        T_primary = np.zeros(shape=(N_element*N_turn, N_row))
+        h_primary = np.zeros(shape=(N_element*N_turn, N_row))
+        htc_primary = np.zeros(shape=(N_element*N_turn, N_row))
+        Re_primary = np.zeros(shape=(N_element*N_turn, N_row))
+        pr_primary = np.zeros(shape=(N_element*N_turn, N_row))
+        f_primary = np.zeros(shape=(N_element*N_turn, N_row))
+        p_primary = np.zeros(shape=(N_element*N_turn, N_row))
+        d_primary = np.zeros(shape=(N_element*N_turn, N_row))
         
-        T_secondary = np.zeros(shape=((N_element+1)*N_turn, N_row))
+        T_secondary = np.zeros(shape=(N_element*N_turn, N_row))
         
-        UA_tot = np.ones(shape=((N_element+1)*N_turn, N_row))
-        eps = np.zeros(shape=((N_element+1)*N_turn, N_row))
-        Q_trans = np.zeros(shape=((N_element+1)*N_turn, N_row))
-        
-        
-        a_FTHX = 1
+        UA_tot = np.ones(shape=(N_element*N_turn, N_row))
+        eps = np.zeros(shape=(N_element*N_turn, N_row))
+        Q_trans = np.zeros(shape=(N_element*N_turn, N_row))
         
         if noHX == 0:
-            T_sec_lb = secondary_out.T if purpose == 'evap' else secondary_out.T-50
-            T_sec_ub = secondary_out.T if purpose == 'cond' else secondary_out.T+50
+            T_sec_lb = secondary_out.T if purpose == 'evap' else secondary_out.T - 50.0
+            T_sec_ub = secondary_out.T if purpose == 'cond' else secondary_out.T + 50.0
             c_sec = secondary_out.c
             v_sec = secondary_out.v
             l_sec = secondary_out.l
             pr_sec = secondary_out.pr
             try:
-                mdot_sec = secondary_out.m
-            except:
                 mdot_sec = secondary_in.m
-            
+            except:
+                mdot_sec = secondary_out.m
             if cor == False:
-                UA = self.fthx_inputs.UA*(primary_in.m/self.fthx_mdot_ref**0.8
-                
+                UA = self.fthx_inputs.UA*pow(mdot_sec/self.fthx_inputs.mdot_nominal_sec,0.8)
+            
         elif noHX == 1:
-            T_sec_lb = secondary_in.T if purpose == 'cond' else secondary_in.T-50
-            T_sec_ub = secondary_in.T if purpose == 'evap' else secondary_in.T+50
+            T_sec_lb = secondary_in.T
+            T_sec_ub = secondary_in.T
             
             c_sec = secondary_in.c
             v_sec = secondary_in.v
@@ -427,28 +412,349 @@ class HX_module:
             except:
                 mdot_sec = secondary_out.m
             if cor == False:
-                UA = self.fthx_inputs.UA*(primary_in.m/self.fthx_mdot_ref**0.8
+                UA = self.fthx_inputs.UA*pow(mdot_sec/self.fthx_inputs.mdot_nominal_ref,0.8)
                 
         else:
+            T_sec_lb = secondary_in.T
+            T_sec_ub = secondary_in.T
+            
             c_sec = 0.5*(secondary_in.c + secondary_out.c)
             v_sec = 0.5*(secondary_in.v + secondary_out.v)
             l_sec = 0.5*(secondary_in.l + secondary_out.l)
             pr_sec = c_sec*v_sec/l_sec
             
-            T_sec_lb = secondary_out.T if purpose == 'cond' else secondary_in.T
-            T_sec_ub = secondary_out.T if purpose == 'cond' else secondary_in.T
             mdot_sec_lb = 0;
-            mdot_sec_ub = 3*(primary_in.hg - primary_in.hl)*primary_in.m/c_sec/(secondary_out.T - secondary_in.T) if purpose == 'cond' else 3*(primary_out.hg - primary_out.hl)*primary_out.m/c_sec/(secondary_in.T - secondary_out.T)
+            mdot_sec_ub = 3*(primary_in.hg - primary_in.hl)*primary_in.m/c_sec/(secondary_out.T - secondary_in.T) if purpose == 'cond' else 3*(primary_in.hg - primary_in.hl)*primary_in.m/c_sec/(secondary_in.T - secondary_out.T)
         
-        T_primary[0] = primary_in.T if purpose == 'cond' else primary_out.T
-        h_primary[0] = primary_in.h if purpose == 'cond' else primary_out.h
-        p_primary[0] = primary_in.p if purpose == 'cond' else primary_out.p
-        hl_primary = primary_in.hl if purpose == 'cond' else primary_out.hl
-        hg_primary = primary_in.hg if purpose == 'cond' else primary_out.hg
+        T_primary_in = primary_in.T
+        h_primary_in = primary_in.h
+        p_primary_in = primary_in.p
+        hl_primary_in = primary_in.hl
+        hg_primary_in = primary_in.hg
         
-        x_primary[0] = (h_primary[0]-hl_primary)/(hg_primary - hl_primary)
-    '''
-    
+        x_primary_in = (h_primary_in-hl_primary)/(hg_primary - hl_primary)
+        
+        if x_primary_in > 0 and x_primary_in < 1:
+            dl_primary = PropsSI('D','P',p_primary_in,'Q',0.0, primary_in.Y)
+            dg_primary = PropsSI('D','P',p_primary_in,'Q',1.0, primary_in.Y)
+            d_primary_in = 1/(x_primary_in/dg_primary+(1-x_primary_in)/dl_primary)
+        else:
+            d_primary_in = PropsSI('D','T',T_primary_in,'P',p_primary_in,primary_in.Y)
+            c_primary = PropsSI('C','T',T_primary_in,'P',p_primary_in,primary_in.Y)
+        
+        '''
+        T_primary[0,0] = primary_in.T
+        h_primary[0,0] = primary_in.h
+        p_primary[0,0] = primary_in.p
+        hl_primary = primary_in.hl
+        hg_primary = primary_in.hg
+        
+        x_primary[0,0] = (h_primary[0,0]-hl_primary)/(hg_primary - hl_primary)
+        
+        if cor == True:
+            G_primary_ref = primary_in.m/self.A_cx
+            if x_primary[0,0] > 0 and x_primary[0,0] < 1:
+                dl_primary = PropsSI('D','P',p_primary[0,0],'Q',0.0, primary_in.Y)
+                dg_primary = PropsSI('D','P',p_primary[0,0],'Q',1.0, primary_in.Y)
+                d_primary[0,0] = 1/(x_primary[0,0]/dg_primary+(1-x_primary[0,0])/dl_primary)
+                vl_primary = PropsSI('V','P',p_primary[0,0],'Q',0.0, primary_in.Y)
+                vg_primary = PropsSI('V','P',p_primary[0,0],'Q',1.0, primary_in.Y)
+                cl_primary = PropsSI('C','P',p_primary[0,0],'Q',0.0, primary_in.Y)
+                ll_primary = PropsSI('L','P',p_primary[0,0],'Q',0.0, primary_in.Y)
+                
+                G_primary[0,0] = G_primary_ref*((1-x_primary[0,0])+x_primary[0,0]*pow(dl_primary/dg_primary,0.5))
+                Re_primary[0,0] = G_primary[0,0]*self.Dh/vl_primary
+                pr_primary[0,0] = cl_primary*vl_primary/ll_primary
+            else:
+                d_primary[0,0] = PropsSI('D','T',T_primary[0,0],'P',p_primary[0,0],primary_in.Y)
+                v_primary = PropsSI('V','T',T_primary[0,0],'P',p_primary[0,0],primary_in.Y)
+                c_primary = PropsSI('C','T',T_primary[0,0],'P',p_primary[0,0],primary_in.Y)
+                l_primary = PropsSI('L','T',T_primary[0,0],'P',p_primary[0,0],primary_in.Y)
+                
+                G_primary[0,0] = G_primary_ref
+                Re_primary[0,0] = G_primary_ref*self.Dh/v_primary
+                pr_primary[0,0] = c_primary*v_primary/l_primary
+        ''' # 나중에 상관식 정해지면 수정
+        
+        a_FTHX = 1
+                
+        while a_FTHX:
+            T_sec = 0.5*(T_sec_lb + T_sec_ub)
+            
+            if noHX == 2:
+                mdot_sec = 0.5*(mdot_sec_lb + mdot_sec_ub)
+                if cor == False:
+                    UA = self.fthx_inputs.UA*pow(mdot_sec/self.fthx_inputs.mdot_nominal_ref,0.8)
+                    
+            dT = primary_in.T - T_sec
+            if (dT < 0.0 and purpose == 'cond') or (dT > 0.0 and purpose == 'evap'):
+                err_index = 1 # Temperature Reverse
+                break
+            else:
+                err_index = 0
+            
+            if cor == True:
+                aaa = 0
+            else:
+                UA_const = UA/((N_element-1)*N_turn*N_row)
+                dp_const = self.fthx_inputs.dp/((N_element-1)*N_turn*N_row)*primary_in.p
+                UA_in = UA_const
+                dp_in = dp_const
+                
+            if x_primary_in > 0 and x_primary_in < 1:
+                C_min = c_sec*mdot_sec
+                NTU = UA_in/C_min
+                eps_in = 1 - np.exp(-NTU)
+            else:
+                C_min = min(c_primary*primary_in.m, c_sec*mdot_sec)
+                C_max = max(c_primary*primary_in.m, c_sec*mdot_sec)
+                C_r = C_min/C_max
+                NTU = UA_in/C_min
+                
+                if C_min == c_primary*primary_in.m:
+                    eps_in = 1-np.exp(-(1-np.exp(-NTU*C_r))/C_r)
+                else:
+                    eps_in = (1-np.exp(-C_r*(1-np.exp(-NTU))))/C_r
+                    
+            Q_trans_in = eps_in*C_min*((T_primary_in - T_sec))
+            
+            for rr in range(N_row):
+                for tt in range(N_turn):
+                    for jj in range(N_element):
+                        if rr == 0:
+                            if jj == 0:
+                                h_primary[jj*(tt+1),rr] = h_primary_in - Q_trans_in/primary_in.m
+                                p_primary[jj*(tt+1),rr] = p_primary_in - dp_in
+                            else:
+                                h_primary[jj*(tt+1),rr] = h_primary[jj*(tt+1)-1,rr] - Q_trans[jj*(tt+1),rr]/primary_in.m
+                                p_primary[jj*(tt+1),rr] = p_primary[jj*(tt+1)-1,rr] - dp_primary
+                                if jj == N_element-1:
+                                    T_primary_in = T_primary[jj*(tt+1),rr]
+                                    h_primary_in = h_primary[jj*(tt+1),rr]
+                                    p_primary_in = p_primary[jj*(tt+1),rr]
+                                    x_primary_in = (h_primary_in-hl_primary)/(hg_primary - hl_primary)
+                                    Q_trans_in = Q_trans[jj*(tt+1),rr]
+                                    dp_in = dp_primary
+                                    
+                            hl_primary = PropsSI('H','P',p_primary[jj*(tt+1),rr],'Q',0.0, primary_in.Y)
+                            hg_primary = PropsSI('H','P',p_primary[jj*(tt+1),rr],'Q',1.0, primary_in.Y)
+                            x_primary[jj*(tt+1),rr] = (h_primary[jj*(tt+1),rr]-hl_primary)/(hg_primary - hl_primary)
+                            T_primary[jj*(tt+1),rr] = PropsSI('T','H',h_primary[jj*(tt+1),rr],'P',p_primary[jj*(tt+1),rr],primary_in.Y)
+                            dT = T_primary[jj*(tt+1),rr]-T_sec
+                            
+                            if x_primary[jj*(tt+1),rr] > 0 and x_primary[jj*(tt+1),rr] < 1:
+                                dl_primary = PropsSI('D','P',p_primary[jj*(tt+1),rr],'Q',0.0, primary_in.Y)
+                                dg_primary = PropsSI('D','P',p_primary[jj*(tt+1),rr],'Q',1.0, primary_in.Y)
+                                d_primary[jj*(tt+1),rr] = 1/(x_primary[jj*(tt+1),rr]/dg_primary+(1-x_primary[jj*(tt+1),rr])/dl_primary)
+                            else:
+                                d_primary[jj*(tt+1),rr] = PropsSI('D','T',T_primary[jj*(tt+1),rr],'P',p_primary[jj*(tt+1),rr],primary_in.Y)
+                                c_primary = PropsSI('C','T',T_primary[jj*(tt+1),rr],'P',p_primary[jj*(tt+1),rr],primary_in.Y)
+                            
+                            
+                            if cor == True:
+                                aaa = 1
+                            else:
+                                UA_tot[jj*(tt+1),rr] = UA_const
+                                dp_primary = dp_const
+                                    
+                            if x_primary[jj*(tt+1),rr] > 0 and x_primary[jj*(tt+1),rr] < 1:
+                                C_min = c_sec*mdot_sec
+                                NTU = UA_tot[jj*(tt+1),rr]/C_min
+                                eps[jj*(tt+1),rr] = 1 - np.exp(-NTU)
+                            else:
+                                C_min = min(c_primary*primary_in.m, c_sec*mdot_sec)
+                                C_max = max(c_primary*primary_in.m, c_sec*mdot_sec)
+                                C_r = C_min/C_max
+                                NTU = UA_tot[jj*(tt+1),rr]/C_min
+                                
+                                if C_min == c_primary*primary_in.m:
+                                    eps[jj*(tt+1),rr] = 1-np.exp(-(1-np.exp(-NTU*C_r))/C_r)
+                                else:
+                                    eps[jj*(tt+1),rr] = (1-np.exp(-C_r*(1-np.exp(-NTU))))/C_r
+                                    
+                            Q_trans[jj*(tt+1),rr] = eps[jj*(tt+1),rr]*C_min*((T_primary[jj*(tt+1),rr] - T_secondary[jj*(tt+1),rr]))
+                            
+                            T_secondary[jj*(tt+1),rr] = T_sec + Q_trans[jj*(tt+1),rr]/(c_sec*mdot_sec)
+                            
+                        elif round(rr/2) != rr/2 and rr != 0:
+                            if jj == 0:
+                                h_primary[(N_element-1-jj)*(tt+1),rr] = h_primary_in - Q_trans_in/primary_in.m
+                                p_primary[(N_element-1-jj)*(tt+1),rr] = p_primary_in - dp_in
+                            else:
+                                h_primary[(N_element-1-jj)*(tt+1),rr] = h_primary[(N_element-1-jj)*(tt+1)+1,rr] - Q_trans[(N_element-1-jj)*(tt+1),rr]/primary_in.m
+                                p_primary[(N_element-1-jj)*(tt+1),rr] = p_primary[(N_element-1-jj)*(tt+1),rr] - dp_primary
+                                if jj == N_element-1:
+                                    T_primary_in = T_primary[(N_element-1-jj)*(tt+1),rr]
+                                    h_primary_in = h_primary[(N_element-1-jj)*(tt+1),rr]
+                                    p_primary_in = p_primary[(N_element-1-jj)*(tt+1),rr]
+                                    x_primary_in = (h_primary_in-hl_primary)/(hg_primary - hl_primary)
+                                    Q_trans_in = Q_trans[(N_element-1-jj)*(tt+1),rr]
+                                    dp_in = dp_primary
+                                    
+                            hl_primary = PropsSI('H','P',p_primary[(N_element-1-jj)*(tt+1),rr],'Q',0.0, primary_in.Y)
+                            hg_primary = PropsSI('H','P',p_primary[(N_element-1-jj)*(tt+1),rr],'Q',1.0, primary_in.Y)
+                            x_primary[(N_element-1-jj)*(tt+1),rr] = (h_primary[(N_element-1-jj)*(tt+1),rr]-hl_primary)/(hg_primary - hl_primary)
+                            T_primary[(N_element-1-jj)*(tt+1),rr] = PropsSI('T','H',h_primary[(N_element-1-jj)*(tt+1),rr],'P',p_primary[(N_element-1-jj)*(tt+1),rr],primary_in.Y)
+                            dT = T_primary[(N_element-1-jj)*(tt+1),rr]-T_secondary[(N_element-1-jj)*(tt+1),rr-1]
+                            
+                            if x_primary[(N_element-1-jj)*(tt+1),rr] > 0 and x_primary[(N_element-1-jj)*(tt+1),rr] < 1:
+                                dl_primary = PropsSI('D','P',p_primary[(N_element-1-jj)*(tt+1),rr],'Q',0.0, primary_in.Y)
+                                dg_primary = PropsSI('D','P',p_primary[(N_element-1-jj)*(tt+1),rr],'Q',1.0, primary_in.Y)
+                                d_primary[(N_element-1-jj)*(tt+1),rr] = 1/(x_primary[(N_element-1-jj)*(tt+1),rr]/dg_primary+(1-x_primary[(N_element-1-jj)*(tt+1),rr])/dl_primary)
+                            else:
+                                d_primary[(N_element-1-jj)*(tt+1),rr] = PropsSI('D','T',T_primary[(N_element-1-jj)*(tt+1),rr],'P',p_primary[(N_element-1-jj)*(tt+1),rr],primary_in.Y)
+                                c_primary = PropsSI('C','T',T_primary[(N_element-1-jj)*(tt+1),rr],'P',p_primary[(N_element-1-jj)*(tt+1),rr],primary_in.Y)
+                            
+                            if cor == True:
+                                aaa = 1
+                            else:
+                                UA_tot[(N_element-1-jj)*(tt+1),rr] = UA_const
+                                dp_primary = dp_const
+                                    
+                            if x_primary[(N_element-1-jj)*(tt+1),rr] > 0 and x_primary[(N_element-1-jj)*(tt+1),rr] < 1:
+                                C_min = c_sec*mdot_sec
+                                NTU = UA_tot[(N_element-1-jj)*(tt+1),rr]/C_min
+                                eps[(N_element-1-jj)*(tt+1),rr] = 1 - np.exp(-NTU)
+                            else:
+                                C_min = min(c_primary*primary_in.m, c_sec*mdot_sec)
+                                C_max = max(c_primary*primary_in.m, c_sec*mdot_sec)
+                                C_r = C_min/C_max
+                                NTU = UA_tot[(N_element-1-jj)*(tt+1),rr]/C_min
+                                
+                                if C_min == c_primary*primary_in.m:
+                                    eps[(N_element-1-jj)*(tt+1),rr] = 1-np.exp(-(1-np.exp(-NTU*C_r))/C_r)
+                                else:
+                                    eps[(N_element-1-jj)*(tt+1),rr] = (1-np.exp(-C_r*(1-np.exp(-NTU))))/C_r
+                                    
+                            Q_trans[(N_element-1-jj)*(tt+1),rr] = eps[(N_element-1-jj)*(tt+1),rr]*C_min*((T_primary[(N_element-1-jj)*(tt+1),rr] - T_secondary[(N_element-1-jj)*(tt+1),rr]))
+                            
+                            T_secondary[jj*(tt+1),rr] = T_secondary[(N_element-1-jj)*(tt+1),rr-1] + Q_trans[(N_element-1-jj)*(tt+1),rr]/(c_sec*mdot_sec)
+                            
+                        elif round(rr/2) == rr/2 and rr != 0:
+                            if jj == 0:
+                                h_primary[jj*(tt+1),rr] = h_primary_in - Q_trans_in/primary_in.m
+                                p_primary[jj*(tt+1),rr] = p_primary_in - dp_in
+                            else:
+                                h_primary[jj*(tt+1),rr] = h_primary[jj*(tt+1)+1,rr] - Q_trans[jj*(tt+1),rr]/primary_in.m
+                                p_primary[jj*(tt+1),rr] = p_primary[jj*(tt+1),rr] - dp_primary
+                                if jj == N_element-1:
+                                    T_primary_in = T_primary[jj*(tt+1),rr]
+                                    h_primary_in = h_primary[jj*(tt+1),rr]
+                                    p_primary_in = p_primary[jj*(tt+1),rr]
+                                    x_primary_in = (h_primary_in-hl_primary)/(hg_primary - hl_primary)
+                                    Q_trans_in = Q_trans[jj*(tt+1),rr]
+                                    dp_in = dp_primary
+                                    
+                            hl_primary = PropsSI('H','P',p_primary[jj*(tt+1),rr],'Q',0.0, primary_in.Y)
+                            hg_primary = PropsSI('H','P',p_primary[jj*(tt+1),rr],'Q',1.0, primary_in.Y)
+                            x_primary[jj*(tt+1),rr] = (h_primary[jj*(tt+1),rr]-hl_primary)/(hg_primary - hl_primary)
+                            T_primary[jj*(tt+1),rr] = PropsSI('T','H',h_primary[jj*(tt+1),rr],'P',p_primary[jj*(tt+1),rr],primary_in.Y)
+                            dT = T_primary[jj*(tt+1),rr]-T_secondary[jj*(tt+1),rr-1]
+                            
+                            if x_primary[jj*(tt+1),rr] > 0 and x_primary[jj*(tt+1),rr] < 1:
+                                dl_primary = PropsSI('D','P',p_primary[jj*(tt+1),rr],'Q',0.0, primary_in.Y)
+                                dg_primary = PropsSI('D','P',p_primary[jj*(tt+1),rr],'Q',1.0, primary_in.Y)
+                                d_primary[jj*(tt+1),rr] = 1/(x_primary[jj*(tt+1),rr]/dg_primary+(1-x_primary[jj*(tt+1),rr])/dl_primary)
+                            else:
+                                d_primary[jj*(tt+1),rr] = PropsSI('D','T',T_primary[jj*(tt+1),rr],'P',p_primary[jj*(tt+1),rr],primary_in.Y)
+                                c_primary = PropsSI('C','T',T_primary[jj*(tt+1),rr],'P',p_primary[jj*(tt+1),rr],primary_in.Y)
+                            
+                            if cor == True:
+                                aaa = 1
+                            else:
+                                UA_tot[jj*(tt+1),rr] = UA_const
+                                dp_primary = dp_const
+                                    
+                            if x_primary[jj*(tt+1),rr] > 0 and x_primary[jj*(tt+1),rr] < 1:
+                                C_min = c_sec*mdot_sec
+                                NTU = UA_tot[jj*(tt+1),rr]/C_min
+                                eps[jj*(tt+1),rr] = 1 - np.exp(-NTU)
+                            else:
+                                C_min = min(c_primary*primary_in.m, c_sec*mdot_sec)
+                                C_max = max(c_primary*primary_in.m, c_sec*mdot_sec)
+                                C_r = C_min/C_max
+                                NTU = UA_tot[jj*(tt+1),rr]/C_min
+                                
+                                if C_min == c_primary*primary_in.m:
+                                    eps[jj*(tt+1),rr] = 1-np.exp(-(1-np.exp(-NTU*C_r))/C_r)
+                                else:
+                                    eps[jj*(tt+1),rr] = (1-np.exp(-C_r*(1-np.exp(-NTU))))/C_r
+                                    
+                            Q_trans[jj*(tt+1),rr] = eps[jj*(tt+1),rr]*C_min*((T_primary[jj*(tt+1),rr] - T_secondary[jj*(tt+1),rr]))
+                            
+                            T_secondary[jj*(tt+1),rr] = T_secondary[jj*(tt+1),rr-1] + Q_trans[jj*(tt+1),rr]/(c_sec*mdot_sec)
+                            
+            
+            if err_index == 0:
+                T_secondary_cal = T_secondary[:,-1].mean
+                    
+                if noHX == 0:
+                    err_T_sec = (secondary_out.T - T_secondary_cal)/secondary_out.T
+                    if err_T_sec > 0:
+                        T_sec_lb = T_sec
+                    else:
+                        T_sec_ub = T_sec
+                elif noHX == 1:
+                    err_T_sec = 0.0
+                    secondary_out.T = T_secondary_cal
+                else:
+                    err_T_sec = (secondary_out.T - T_secondary_cal)/secondary_out.T
+                    if err_T_sec > 0:
+                        mdot_sec_lb = mdot_sec
+                    else:
+                        mdot_sec_ub = mdot_sec
+            
+                if abs(err_T_sec) < 1.0e-3:
+                    a_FTHX = 0
+                else:
+                    if noHX == 2:
+                        if (mdot_sec_ub - mdot_sec_lb)/mdot_sec < 1.0e-3:
+                            a_FTHX = 0
+                    else:
+                        if (T_sec_ub - T_sec_lb)/T_sec < 1.0e-3:
+                            a_FTHX = 0
+            else:
+                a_FTHX = 0
+                        
+        if err_index == 1:
+            Q = 0.0
+            mean_d = 0.0
+            T_pp = 0.0
+        else:
+            mean_d = d_primary.mean()
+            
+            if round(N_row/2) == N_row/2:
+                primary_out.T = T_primary[-1,-1]
+                primary_out.p = p_primary[-1,-1]
+                primary_out.h = h_primary[-1,-1]
+            else:
+                primary_out.T = T_primary[0,-1]
+                primary_out.p = p_primary[0,-1]
+                primary_out.h = h_primary[0,-1]
+                
+            try:
+                primary_out.Ts=PropsSI('T','P',primary_out.p,'Q',0.5,primary_out.Y)
+            except:
+                primary_out.Ts = primary_out.T
+
+            primary_out.hl=hl_primary
+            primary_out.hg=hg_primary
+            
+            secondary_out.T = T_secondary_cal
+            
+            if noHX == 1:
+                secondary_in.T = T_sec
+            elif noHX == 2:        
+                secondary_in.m = mdot_sec
+                secondary_out.m = mdot_sec
+            
+            Q1 = (primary_out.h - primary_in.h)*primary_in.m
+            Q2 = Q_trans.sum()
+            Q = min([Q1, Q2])
+            T_pp = [abs(T1-T2) for T1, T2 in zip(T_primary, T_secondary)]
+            T_pp = np.min(T_pp)
+        return(primary_in, primary_out, secondary_in, secondary_out, Q, mean_d, T_pp, err_index)
+            
 if __name__ == '__main__':
     from HP_dataclass import*
     inputs = PHX_Inputs()
@@ -463,43 +769,6 @@ if __name__ == '__main__':
     inputs.dp = 0.005
     inputs.mdot_nominal = 9.0
     
-    '''
-    noCond = 1
-    InCond = Fluid_flow(Y='Water', m=10.0, T=300, p = 101300.0)
-    OutCond = Fluid_flow(Y='Water', m=10.0, T=0, p = 101300.0)
-    if noCond == 0:
-        OutCond.c = Aux_fn.PropCal(OutCond, 'C', 'T', 'P') 
-        OutCond.c = Aux_fn.PropCal(OutCond, 'C', 'T', 'P') 
-        OutCond.v = Aux_fn.PropCal(OutCond, 'V', 'T', 'P')
-        OutCond.pr = Aux_fn.PropCal(OutCond, 'Prandtl', 'T', 'P')
-        OutCond.l = Aux_fn.PropCal(OutCond, 'L', 'T', 'P')
-        OutCond.d = Aux_fn.PropCal(OutCond, 'D', 'T', 'P')
-    elif noCond == 1:
-        InCond.c = Aux_fn.PropCal(InCond, 'C', 'T', 'P')
-        InCond.v = Aux_fn.PropCal(InCond, 'V', 'T', 'P')
-        InCond.pr = Aux_fn.PropCal(InCond, 'Prandtl', 'T', 'P')
-        InCond.l = Aux_fn.PropCal(InCond, 'L', 'T', 'P')
-        InCond.d = Aux_fn.PropCal(InCond, 'D', 'T', 'P')            
-    else:
-        InCond.c = Aux_fn.PropCal(InCond, 'C', 'T', 'P')
-        InCond.v = Aux_fn.PropCal(InCond, 'V', 'T', 'P')
-        InCond.pr = Aux_fn.PropCal(InCond, 'Prandtl', 'T', 'P')
-        InCond.l = Aux_fn.PropCal(InCond, 'L', 'T', 'P')
-        InCond.d = Aux_fn.PropCal(InCond, 'D', 'T', 'P')
-        OutCond.c = Aux_fn.PropCal(OutCond, 'C', 'T', 'P')
-        OutCond.v = Aux_fn.PropCal(OutCond, 'V', 'T', 'P')
-        OutCond.pr = Aux_fn.PropCal(OutCond, 'Prandtl', 'T', 'P')
-        OutCond.l = Aux_fn.PropCal(OutCond, 'L', 'T', 'P')
-        OutCond.d = Aux_fn.PropCal(OutCond, 'D', 'T', 'P')
-    
-    InCond_REF = Fluid_flow(Y='R410A', m=0.8, T=333.15, p = 3.0e6)
-    OutCond_REF = Fluid_flow(Y='R410A')
-    InCond_REF.h = Aux_fn.PropCal(InCond_REF, 'H','T','P')
-    InCond_REF.hl = PropsSI('H','P',InCond_REF.p,'Q',0.0, InCond_REF.Y )
-    InCond_REF.hg = PropsSI('H','P',InCond_REF.p,'Q',1.0, InCond_REF.Y )
-    cond = HX_module(hx_type='phx', cor=False, Inputs=inputs)
-    (InCond_REF, OutCond_REF, InCond, OutCond, Q, mean_d)=cond.PHX('cond',InCond_REF, OutCond_REF, InCond, OutCond, noCond)
-    '''
     
     noEvap = 2
     InEvap = Fluid_flow(Y='Water', m=0.0, T=280.15, p = 101300.0)

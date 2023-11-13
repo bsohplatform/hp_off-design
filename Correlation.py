@@ -95,3 +95,15 @@ class PHX:
         htc = 0.724*pow(beta/30,0.646)*pow(Re, 0.583)*pow(pr, 1/3)
         
         return htc
+
+class FTHX:
+    @staticmethod
+    def htc_dittus(Re, pr, Dh, l, purpose):
+        if purpose == 'cond':
+            n = 0.3
+        else:
+            n = 0.4
+        
+        htc = (l/Dh)*0.023*Re**0.8*pr*n
+        
+        return htc
