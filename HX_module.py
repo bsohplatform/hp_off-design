@@ -10,7 +10,7 @@ class HX_module:
         if hx_type == 'phx':
             self.phx_inputs = Inputs
             if cor == True:
-                self.crg_depth = self.phx_inputs.thk_tot/self.phx_inputs.N_plate - self.phx_inputs.thk_plate if self.phx_inputs.crg_depth == 0 else self.phx_inputs.crg_depth
+                self.crg_depth = self.phx_inputs.thk_tot/self.phx_inputs.N_plate - 2*self.phx_inputs.thk_plate if self.phx_inputs.crg_depth == 0 else self.phx_inputs.crg_depth
                 self.crg_pitch = 3*self.crg_depth if self.phx_inputs.crg_pitch == 0 else self.phx_inputs.crg_pitch
                 self.enlargement = 2/pi*pow((self.crg_depth*pi/self.crg_pitch)**2+1,0.5)*ellipe((self.crg_depth*pi/self.crg_pitch)**2/((self.crg_depth*pi/self.crg_pitch)**2+1))
                 self.A_cx = self.phx_inputs.N_plate*self.crg_depth*self.phx_inputs.L_width/pi
@@ -18,7 +18,7 @@ class HX_module:
                 self.R_plate = self.phx_inputs.thk_plate/15.0
                 self.A_flow = self.phx_inputs.L_width*self.phx_inputs.L_vert*(self.enlargement)*self.phx_inputs.N_plate if self.phx_inputs.A_flow == 0 else self.phx_inputs.A_flow
                 self.A_flow = self.A_flow*self.phx_inputs.mult_A
-                self.V = self.crg_depth*self.phx_inputs.L_width*self.phx_inputs.L_vert
+                self.V = self.crg_depth*self.phx_inputs.L_width*self.phx_inputs.L_vert*self.phx_inputs.N_plate/2
                 self.beta = 60.0 if self.phx_inputs.beta == 0 else self.phx_inputs.beta
             else:
                 self.V = 1.0
@@ -50,7 +50,7 @@ class HX_module:
         
         T_secondary = np.zeros(shape=(self.phx_inputs.N_element+1))    
         
-        UA_tot = np.ones(shape=(self.phx_inputs.N_element+1))
+        UA_tot = np.zeros(shape=(self.phx_inputs.N_element+1))
         eps = np.zeros(shape=(self.phx_inputs.N_element+1))
         Q_trans = np.zeros(shape=(self.phx_inputs.N_element+1))
         

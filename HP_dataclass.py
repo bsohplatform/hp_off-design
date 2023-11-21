@@ -29,17 +29,21 @@ class Cycle_Inputs:
     cond_Q: float = 0.0
     evap_Q: float = 0.0
     V_rec: float = 0.0
+    tol: float = 1.0e-3
 @dataclass
 class Comp_Inputs:
     mode : float = 'poly'
     V_dis: float = 0.0 # Displacement volume
+    V_station: float = 0.0 # Displacement volume
     C_gap: float = 0.0 # Clearance factor (clearance/displacement)
     n_poly: float = 0.0 # Polytropic number
     eff_mech: float = 1.0 # mechanical_efficiency
     frequency: float = 60.0 # Compressor frequency [Hz]
     extra_work: float = 0.0
     comp_pkl : str = ''
-    
+    V_oil: float = 0.0
+    d_oil: float = 950.0
+    frac_ref_in_oil: float = 0.0 
 @dataclass
 class PHX_Inputs:
     N_element: int = 30
@@ -81,6 +85,11 @@ class Outputs:
     DSC: float = 0.0
     cond_x: float = 0.0
     M_ref: float = 0.0
+    M_cond: float = 0.0
+    M_evap: float = 0.0
+    M_comp: float = 0.0
+    M_pipe: float = 0.0
+    M_oil: float = 0.0
     COP_c: float = 0.0
     COP_h: float = 0.0
     cond_T_pp: float = 0.0

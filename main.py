@@ -184,7 +184,20 @@ class VCHP_off:
                                 target_matrix[i,ii] = OutCond_REF.Ts - OutCond_REF.T
                             elif self.BC == 'm':
                                 cc = Cycle_Inputs.M_ref
-                                target_matrix[i,ii] = (cond.V*cond_rho+evap.V*evap_rho)
+                                M_comp2cond = Cycle_Inputs.V_comp2cond*PropsSI("D","H",InCond_REF.h,"P",InCond_REF.p, InCond_REF.Y)
+                                M_cond2tev = Cycle_Inputs.V_cond2tev*PropsSI("D","H",OutCond_REF.h,"P",OutCond_REF.p, OutCond_REF.Y)
+                                M_tev2evap = Cycle_Inputs.V_tev2evap*PropsSI("D","H",InEvap_REF.h, "P",InEvap_REF.p,InEvap_REF.Y)
+                                M_evap2comp = Cycle_Inputs.V_evap2comp*PropsSI("D","H",OutEvap_REF.h, "P",OutEvap_REF.p,OutEvap_REF.Y)
+                                
+                                Outputs.M_cond = cond.V*cond_rho
+                                Outputs.M_evap = evap.V*evap_rho
+                                Outputs.M_comp = Comp_Inputs.V_station*PropsSI("D","T",OutEvap_REF.T,"P",OutEvap_REF.p,OutEvap_REF.Y)
+                                Outputs.M_oil = Comp_Inputs.V_oil*Comp_Inputs.d_oil*Comp_Inputs.frac_ref_in_oil
+                                Outputs.M_pipe = M_comp2cond+M_cond2tev+M_tev2evap+M_evap2comp
+                                
+                                Outputs.M_ref = Outputs.M_cond+Outputs.M_evap+Outputs.M_comp+Outputs.M_oil+Outputs.M_pipe
+                                                                
+                                target_matrix[i,ii] = Outputs.M_ref
                             elif self.BC == 'x':
                                 cc = Cycle_Inputs.cond_x
                                 target_matrix[i,ii] = (OutCond_REF.h - OutCond_REF.hl)/(OutCond_REF.hg - OutCond_REF.hl)
@@ -214,12 +227,11 @@ class VCHP_off:
                 err_BC = abs((0.5*(cond_j1+cond_j2)-cc)/cc)
                 kk = (cond_p_ub - cond_p_lb)/(0.5*(cond_p_ub + cond_p_lb)) + (evap_p_ub - evap_p_lb)/(0.5*(evap_p_ub+evap_p_lb))
                 
-                if err_BC < 1.0e-3:
+                if err_BC < Cycle_Inputs.tol:
                     a = 0
-                elif kk < 1.0e-3:
+                elif kk < Cycle_Inputs.tol:
                     a = 0
                     
-        Outputs.M_ref = (cond.V*cond_rho+evap.V*evap_rho)
         Outputs.cond_x = (OutCond_REF.h - OutCond_REF.hl)/(OutCond_REF.hg - OutCond_REF.hl)
         Outputs.DSC = OutCond_REF.Ts - OutCond_REF.T
         Outputs.evap_Q = evap_Q
@@ -248,7 +260,7 @@ class VCHP_off:
         print('evap_Tpp: %5.3f [℃]'%(Outputs.evap_T_pp))
         print('cond_dp: %5.3f [-]'%((InCond_REF.p-OutCond_REF.p)/InCond_REF.p*100.0))
         print('evap_dp: %5.3f [-]'%((InEvap_REF.p-OutEvap_REF.p)/OutEvap_REF.p*100.0))
-        print('comp_eff: %5.3f [%%]'%(Outputs.comp_eff_isen))
+        print('comp_eff: %5.3f [%%]'%(Outputs.comp_eff_isen*100))
         print('DSC: %5.3f [℃]'%(Outputs.DSC))
         print('--------------------- Secondary Results ---------------------')
         print('Cond fluid: %s'%(InCond.Y))
