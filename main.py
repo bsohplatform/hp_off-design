@@ -191,7 +191,7 @@ class VCHP_off:
                                 
                                 Outputs.M_cond = cond.V*cond_rho
                                 Outputs.M_evap = evap.V*evap_rho
-                                Outputs.M_comp = Comp_Inputs.V_station*PropsSI("D","T",OutEvap_REF.T,"P",OutEvap_REF.p,OutEvap_REF.Y)
+                                Outputs.M_comp = Comp_Inputs.V_free*PropsSI("D","T",OutEvap_REF.T,"P",OutEvap_REF.p,OutEvap_REF.Y)
                                 Outputs.M_oil = Comp_Inputs.V_oil*Comp_Inputs.d_oil*Comp_Inputs.frac_ref_in_oil
                                 Outputs.M_pipe = M_comp2cond+M_cond2tev+M_tev2evap+M_evap2comp
                                 
