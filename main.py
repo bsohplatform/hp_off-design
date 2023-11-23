@@ -273,50 +273,77 @@ class VCHP_off:
         print('Evap mdot: %5.3f[kg/s]'%(InEvap.m))
         
 if __name__ == '__main__':
-    # 대체 냉매 실험장치
-    #input_ref = 'REFPROP::R32[0.76]&R125[0.07731]&CF3I[0.16269]'
-    input_ref = 'CO2'
-    cycle_inputs = Cycle_Inputs()
-    comp_inputs = Comp_Inputs()
-    cond_inputs = PHX_Inputs()
-    evap_inputs = FTHX_Inputs()
-    Tcond_in = 20.0+273.15
-    Tcond_out = 0.0
+    cycle_inputs = HP.Cycle_Inputs()
+    comp_inputs = HP.Comp_Inputs()
+    cond_inputs = HP.PHX_Inputs()
+    evap_inputs = HP.PHX_Inputs()
+    outputs = HP.Outputs()
+
+    input_ref = 'REFPROP::R466A.mix'
+    Tcond_in = 0.0
+    Tcond_out = 60.0+273.15
     Pcond = 101300.0
-    Tevap_in = 5.0+273.15
-    Tevap_out = 0.0
+
+    Tevap_in = 0.0
+    Tevap_out = 15.5 + 273.15
     Pevap = 101300.0
-    mcond = 1.0
-    mevap = 10.0
-    InCond = Fluid_flow(Y='water',m=mcond,T=Tcond_in, p = Pcond)
-    OutCond = Fluid_flow(Y='water',m=mcond,T=Tcond_out, p = Pcond)
-    InEvap = Fluid_flow(Y='air',m=mevap, T=Tevap_in, p = Pevap)
-    OutEvap = Fluid_flow(Y='air',m=mevap, T=Tevap_out, p = Pevap)
-    InCond_REF = Fluid_flow(Y=input_ref)
-    OutCond_REF = Fluid_flow(Y=input_ref)
-    InEvap_REF = Fluid_flow(Y=input_ref)
-    OutEvap_REF = Fluid_flow(Y=input_ref)
-    
-    outputs = Outputs()
+
+    cond_fluid = 'water'
+    evap_fluid = 'water'
+
+    mevap = 3.52/3600*CP.PropsSI("D","T",Tevap_out,"P",Pevap,evap_fluid)
+    mcond = 2.8/3600*CP.PropsSI("D","T",Tcond_out,"P",Pcond,cond_fluid)
+
+    InCond = HP.Fluid_flow(Y=cond_fluid,m=mcond,T=Tcond_in, p = Pcond)
+    OutCond = HP.Fluid_flow(Y=cond_fluid,m=mcond,T=Tcond_out, p = Pcond)
+    InEvap = HP.Fluid_flow(Y=evap_fluid,m=mevap, T=Tevap_in, p = Pevap)
+    OutEvap = HP.Fluid_flow(Y=evap_fluid,m=mevap, T=Tevap_out, p = Pevap)
+    InCond_REF = HP.Fluid_flow(Y=input_ref)
+    OutCond_REF = HP.Fluid_flow(Y=input_ref)
+    InEvap_REF = HP.Fluid_flow(Y=input_ref)
+    OutEvap_REF = HP.Fluid_flow(Y=input_ref)
 
     cycle_inputs.layout = 'bas'
-    cycle_inputs.DSH = 5.0
-    dsc = 1.0
-    cycle_inputs.DSC = dsc
-    cycle_inputs.cond_x = -0.05
-    cycle_inputs.M_ref = 8.40615
-    
+    cycle_inputs.DSH = 0.01
+    cycle_inputs.DSC = 1.0
+    cycle_inputs.cond_x = -0.01
+    cycle_inputs.M_ref = 0.8
+    cycle_inputs.tol = 1.0e-4
+    cycle_inputs.V_comp2cond = 0.0
+    cycle_inputs.V_cond2tev = 0.0
+    cycle_inputs.V_tev2evap = 0.0
+    cycle_inputs.V_evap2comp = 0.0
+
+    comp_inputs.mode = 'poly'
+    comp_inputs.comp_pkl = 'r290_comp.pkl'
     comp_inputs.n_poly = 0.0
-    comp_inputs.V_dis = 43.0e-6
-    comp_inputs.frequency = 60
-    comp_inputs.C_gap = 0.01
-    comp_inputs.extra_work = 0.15
+    comp_inputs.V_dis = 43.00e-6
+    comp_inputs.V_free = 0.0
+    comp_inputs.frequency = 60.0
+    comp_inputs.C_gap = 0.2
+    comp_inputs.extra_work = 0.2
+    comp_inputs.V_oil = 0.0
+    comp_inputs.frac_ref_in_oil = 0.0
+
+    evap_inputs.N_element = 100
+    evap_inputs.N_plate = 50
+    evap_inputs.thk_plate = 0.0001
+    evap_inputs.thk_tot = 0.0023*evap_inputs.N_plate
+    evap_inputs.L_vert = 0.466
+    evap_inputs.L_width = 0.109
+    evap_inputs.beta = 60
+    evap_inputs.A_flow = 2.8
+    evap_inputs.type = 'phx'
+    evap_inputs.cor = True
+    evap_inputs.mult_pri = 1.0
+    evap_inputs.mult_sec = 1.0
+    evap_inputs.mult_A = 1.0
 
     cond_inputs.N_element = 100
     cond_inputs.N_plate = 40
-    cond_inputs.thk_plate = 0.0005
-    cond_inputs.thk_tot = 0.0916
-    cond_inputs.L_vert = 0.455
+    cond_inputs.thk_plate = 0.0001
+    cond_inputs.thk_tot = 0.09
+    cond_inputs.L_vert = 0.479
     cond_inputs.L_width = 0.115
     cond_inputs.beta = 60
     cond_inputs.A_flow = 2.39
@@ -324,81 +351,12 @@ if __name__ == '__main__':
     cond_inputs.cor = True
     cond_inputs.mult_pri = 1.0
     cond_inputs.mult_sec = 1.0
-    cond_inputs.mult_A = 1.0
+    cond_inputs.mult_A = 0.7
 
-    evap_inputs.N_element = 20
-    evap_inputs.N_turn = 5
-    evap_inputs.N_row = 3
-    evap_inputs.type = 'fthx'
-    evap_inputs.cor = False
-    evap_inputs.mdot_nominal_sec = mevap
-    evap_inputs.UA = 500.0
-    evap_inputs.dp = 0.001
-    
-    bas_off = VCHP_off('dsc')
+    bas_off = VCHP_off('m')
     (InCond, OutCond, InEvap, OutEvap, noCond, noEvap) = bas_off.Input_Processing(InCond, OutCond, InEvap, OutEvap)
     (InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs) = bas_off.OffDesign_Solver(InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, cycle_inputs, comp_inputs, cond_inputs, evap_inputs, outputs, noCond, noEvap)
     bas_off.Result_summary(InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs)
-    # 스마트플랫폼
-    '''
-    input_ref = 'R410A'
-    cycle_inputs = Cycle_Inputs()
-    comp_inputs = Comp_Inputs()
-    cond_inputs = PHX_Inputs()
-    evap_inputs = PHX_Inputs()
-    InEvap = Fluid_flow(Y='water',m=0.0, T=285.15, p = 101300.0)
-    OutEvap = Fluid_flow(Y='water',m=0.0, T=280.15, p = 101300.0)
-    InCond = Fluid_flow(Y='water',m=0.0,T=305.15, p = 101300.0)
-    OutCond = Fluid_flow(Y='water',m=0.0,T=310.15, p = 101300.0)
-    InEvap_REF = Fluid_flow(Y=input_ref)
-    OutEvap_REF = Fluid_flow(Y=input_ref)
-    InCond_REF = Fluid_flow(Y=input_ref)
-    OutCond_REF = Fluid_flow(Y=input_ref)
-    outputs = Outputs()
 
-    cycle_inputs.layout = 'bas'
-    cycle_inputs.DSH = 5.0
-    cycle_inputs.DSC = 0.5
-    cycle_inputs.cond_x = 0.01
-    cycle_inputs.M_ref = 1.0
-    cycle_inputs.V_rec = 0.005
-    cycle_inputs.cond_Q = 4700.0
-    
-    comp_inputs.n_poly = 2.35
-    comp_inputs.V_dis = 14.1e-6
-    comp_inputs.frequency = 60*2900/3600
-    comp_inputs.C_gap = 0.09
-    comp_inputs.extra_work = 0.05
-
-    cond_inputs.N_element = 150
-    cond_inputs.N_plate = 40
-    cond_inputs.thk_plate = 0.0005
-    cond_inputs.thk_tot = 0.0644
-    cond_inputs.L_vert = 0.244
-    cond_inputs.L_width = 0.064
-    cond_inputs.beta = 60
-    cond_inputs.A_flow = 1.06
-    cond_inputs.type = 'phx'
-    cond_inputs.cor = True
-    cond_inputs.mult_pri = 1.0
-    cond_inputs.mult_sec = 1.0
-    cond_inputs.mult_A = 0.85
-
-    evap_inputs.N_element = 150
-    evap_inputs.N_plate = 40
-    evap_inputs.thk_plate = 0.0005
-    evap_inputs.thk_tot = 0.0644
-    evap_inputs.L_vert = 0.244
-    evap_inputs.L_width = 0.064
-    evap_inputs.beta = 60
-    evap_inputs.A_flow = 1.06
-    evap_inputs.type = 'phx'
-    evap_inputs.cor = True
-    evap_inputs.mult_pri = 1.0
-    evap_inputs.mult_sec = 1.0
-    evap_inputs.mult_A = 0.6
-    
-    bas_off = VCHP_off('h','dsc')
-    (InCond, OutCond, InEvap, OutEvap, noCond, noEvap) = bas_off.Input_Processing(InCond, OutCond, InEvap, OutEvap)
-    (InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs) = bas_off.OffDesign_Solver(InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, cycle_inputs, comp_inputs, cond_inputs, evap_inputs, outputs, noCond, noEvap)
-    '''
+    print('충진량 분포----전체: %.2f, 응축기: %.2f [g], 증발기: %.2f [g], 압축기: %.2f [g], 오일: %.2f [g], 배관: %.2f [g]' %(outputs.M_ref*1000, outputs.M_cond*1000, outputs.M_evap*1000, outputs.M_comp*1000, outputs.M_oil*1000, outputs.M_pipe*1000))
+    print('충진량: %.2f [g/kW]' %(outputs.M_ref*1.0e6/outputs.cond_Q))
