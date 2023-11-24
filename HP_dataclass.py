@@ -33,6 +33,7 @@ class Cycle_Inputs:
 @dataclass
 class Comp_Inputs:
     mode : float = 'poly'
+    type : float = 'high'
     V_dis: float = 0.0 # Displacement volume
     V_station: float = 0.0 # Displacement volume
     C_gap: float = 0.0 # Clearance factor (clearance/displacement)
