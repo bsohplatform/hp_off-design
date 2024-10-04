@@ -14,8 +14,9 @@ class COMP_module:
         Z = PropsSI("Z","T",primary_in.T,"P",primary_in.p,primary_in.Y)
         s = PropsSI("S","T",primary_in.T,"P",primary_in.p,primary_in.Y)
         
-        n_comp = PropsSI("Cpmass","T",primary_in.T,"P",primary_in.p,primary_in.Y)/PropsSI("Cvmass","T",primary_in.T,"P",primary_in.p,primary_in.Y) if Inputs.n_poly == 0.0 else Inputs.n_poly
-        n_comp = max(n_comp, 1.0)
+        n_comp = PropsSI("Cpmass","T",primary_in.T,"P",primary_in.p,primary_in.Y)/PropsSI("Cvmass","T",primary_in.T,"P",primary_in.p,primary_in.Y)
+        n_comp = n_comp*Inputs.n_poly
+                    
         V_comp = Inputs.V_dis
         f_comp = Inputs.frequency
         C_comp = Inputs.C_gap
