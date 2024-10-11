@@ -3,7 +3,7 @@ from COMP_module import *
 from HX_module import *
 from CoolProp.CoolProp import PropsSI
 import numpy as np
-import random
+
 
 class VCHP_off:
     def __init__(self, BC):

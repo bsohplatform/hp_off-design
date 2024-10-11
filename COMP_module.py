@@ -1,6 +1,7 @@
 from CoolProp.CoolProp import PropsSI
 from HP_dataclass import *
 import joblib
+from math import *
 
 class COMP_module:
     def __init__(self, mode):
@@ -15,25 +16,21 @@ class COMP_module:
         s = PropsSI("S","T",primary_in.T,"P",primary_in.p,primary_in.Y)
         
         n_comp = PropsSI("Cpmass","T",primary_in.T,"P",primary_in.p,primary_in.Y)/PropsSI("Cvmass","T",primary_in.T,"P",primary_in.p,primary_in.Y)
-        n_comp = n_comp*Inputs.n_poly
-                    
         V_comp = Inputs.V_dis
         f_comp = Inputs.frequency
         C_comp = Inputs.C_gap
-            
-        eff_vol = 1 + C_comp - C_comp*pow(primary_out.p/primary_in.p,1/n_comp)
-        primary_in.m = eff_vol*primary_in.d*V_comp*f_comp
-        primary_out.m = primary_in.m
         
         if self.mode == 'poly':
-            w_comp = (n_comp/(n_comp-1))*Z*(primary_in.p/primary_in.d)*(pow(primary_out.p/primary_in.p,(n_comp-1)/n_comp) - 1); 
+            w_comp = (n_comp/(n_comp-1))*Z*(primary_in.p/primary_in.d)*(pow(primary_out.p/primary_in.p,(n_comp-1)/n_comp) - 1)
             w_comp = w_comp*(1+Inputs.extra_work)
-            comp_W = primary_in.m*w_comp/Inputs.eff_mech
             
             primary_out.h = primary_in.h + w_comp
             primary_out.T = PropsSI("T","H",primary_out.h,"P",primary_out.p,primary_out.Y)
             h_comp_out_ideal = PropsSI('H','P',primary_out.p,'S',s,primary_out.Y)
             comp_eff_isen = (h_comp_out_ideal - primary_in.h)/(primary_out.h - primary_in.h)
+            
+            n_comp = n_comp*Inputs.n_poly
+            
         elif self.mode == 'pkl':
             comp_eff_isen = joblib.load(Inputs.comp_pkl).predict([[DSH, primary_in.p, primary_out.p]])
             comp_eff_isen = float(comp_eff_isen)
@@ -41,7 +38,25 @@ class COMP_module:
             primary_out.h = (h_comp_out_ideal - primary_in.h)/comp_eff_isen + primary_in.h
             primary_out.T = PropsSI("T","H",primary_out.h, "P",primary_out.p,primary_out.Y)
             
-            comp_W = (primary_out.h - primary_in.h)*primary_in.m/Inputs.eff_mech
+            '''
+            a = 1
+            while a:
+                w_comp = (n_comp/(n_comp-1))*Z*(primary_in.p/primary_in.d)*(pow(primary_out.p/primary_in.p,(n_comp-1)/n_comp) - 1)
+                dwdn = Z*(primary_in.p/primary_in.d)*(-(pow(primary_out.p/primary_in.p,(n_comp-1)/n_comp) - 1)/(n_comp-1)**2+pow(primary_out.p/primary_in.p,(n_comp-1)/n_comp)/n_comp/(n_comp-1)*log(primary_out.p/primary_in.p))
+                err_h = w_comp-(primary_out.h-primary_in.h)
+                n_comp_new = n_comp-err_h/dwdn
+                
+                if abs(err_h) < 1.0e-3:
+                    a = 0
+                else:
+                    n_comp = n_comp_new
+            '''
+            
+        eff_vol = 1 + C_comp - C_comp*pow(primary_out.p/primary_in.p,1/n_comp)
+        primary_in.m = eff_vol*primary_in.d*V_comp*f_comp
+        primary_out.m = primary_in.m
+        comp_W = primary_in.m*w_comp/Inputs.eff_mech
+            
             
         try:
             primary_out.Ts = PropsSI('T','P',primary_out.p, 'Q', 1.0, primary_out.Y)

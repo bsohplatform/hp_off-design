@@ -15,7 +15,7 @@ class HX_module:
                 self.enlargement = 2/pi*pow((self.crg_depth*pi/self.crg_pitch)**2+1,0.5)*ellipe((self.crg_depth*pi/self.crg_pitch)**2/((self.crg_depth*pi/self.crg_pitch)**2+1))
                 self.A_cx = self.phx_inputs.N_plate*self.crg_depth*self.phx_inputs.L_width/pi
                 self.Dh = 2*self.crg_depth
-                self.R_plate = self.phx_inputs.thk_plate/15.0
+                self.R_plate = self.phx_inputs.thk_plate/self.phx_inputs.k
                 self.A_flow = self.phx_inputs.L_width*self.phx_inputs.L_vert*(self.enlargement)*self.phx_inputs.N_plate if self.phx_inputs.A_flow == 0 else self.phx_inputs.A_flow
                 self.A_flow = self.A_flow*self.phx_inputs.mult_A
                 self.V = self.crg_depth*self.phx_inputs.L_width*self.phx_inputs.L_vert*self.phx_inputs.N_plate/2
