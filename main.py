@@ -189,8 +189,8 @@ class VCHP_off:
                                 M_tev2evap = Cycle_Inputs.V_tev2evap*PropsSI("D","H",InEvap_REF.h, "P",InEvap_REF.p,InEvap_REF.Y)
                                 M_evap2comp = Cycle_Inputs.V_evap2comp*PropsSI("D","H",OutEvap_REF.h, "P",OutEvap_REF.p,OutEvap_REF.Y)
                                 
-                                Outputs.M_cond = cond.V*cond_rho
-                                Outputs.M_evap = evap.V*evap_rho
+                                Outputs.M_cond = cond.V_p*cond_rho
+                                Outputs.M_evap = evap.V_p*evap_rho
                                 if Comp_Inputs.type == 'low':
                                     d_free_volume = PropsSI("D","T",OutEvap_REF.T,"P",OutEvap_REF.p,OutEvap_REF.Y)
                                 else:
@@ -267,7 +267,7 @@ class VCHP_off:
         print('evap_dp: %5.3f [-]'%((InEvap_REF.p-OutEvap_REF.p)/OutEvap_REF.p*100.0))
         print('comp_eff: %5.3f [%%]'%(Outputs.comp_eff_isen*100))
         print('DSH: %5.3f [℃]'%(OutEvap_REF.T - PropsSI("T","P",OutEvap_REF.p,"Q",1.0,OutEvap_REF.Y)))
-        print('DSC: %5.3f [℃]'%(OutCond_REF.T - PropsSI("T","P",OutCond_REF.p,"Q",1.0,OutCond_REF.Y)))
+        print('DSC: %5.3f [℃]'%(PropsSI("T","P",OutCond_REF.p,"Q",1.0,OutCond_REF.Y)-OutCond_REF.T))
         print('--------------------- Secondary Results ---------------------')
         print('Cond fluid: %s'%(InCond.Y))
         print('InCond: %5.3f[℃]/ %5.3f[bar]'%(InCond.T-273.15, InCond.p/1.0e5))

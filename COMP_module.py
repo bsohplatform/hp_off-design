@@ -16,11 +16,13 @@ class COMP_module:
         s = PropsSI("S","T",primary_in.T,"P",primary_in.p,primary_in.Y)
         
         n_comp = PropsSI("Cpmass","T",primary_in.T,"P",primary_in.p,primary_in.Y)/PropsSI("Cvmass","T",primary_in.T,"P",primary_in.p,primary_in.Y)
+        
         V_comp = Inputs.V_dis
         f_comp = Inputs.frequency
         C_comp = Inputs.C_gap
         
         if self.mode == 'poly':
+            n_comp = n_comp*Inputs.n_poly
             w_comp = (n_comp/(n_comp-1))*Z*(primary_in.p/primary_in.d)*(pow(primary_out.p/primary_in.p,(n_comp-1)/n_comp) - 1)
             w_comp = w_comp*(1+Inputs.extra_work)
             
@@ -28,8 +30,6 @@ class COMP_module:
             primary_out.T = PropsSI("T","H",primary_out.h,"P",primary_out.p,primary_out.Y)
             h_comp_out_ideal = PropsSI('H','P',primary_out.p,'S',s,primary_out.Y)
             comp_eff_isen = (h_comp_out_ideal - primary_in.h)/(primary_out.h - primary_in.h)
-            
-            n_comp = n_comp*Inputs.n_poly
             
         elif self.mode == 'pkl':
             comp_eff_isen = joblib.load(Inputs.comp_pkl).predict([[DSH, primary_in.p, primary_out.p]])

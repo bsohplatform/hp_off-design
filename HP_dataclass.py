@@ -50,13 +50,9 @@ class PHX_Inputs:
     N_element: int = 30
     N_plate: int = 0 # Number of Plates
     thk_plate: float = 0.0 # Single plate thickness
-    thk_tot: float = 0.0 # Total thickness of PHE
     L_vert: float = 0.0 # Vertical length of PHE (Center to center of inlet and outlet ports)
     L_width: float = 0.0 # total horizontal length of PHE
     beta: float = 0.0 # chevron angle
-    crg_pitch: float = 0.0 # corrugation pitch
-    crg_depth: float = 0.0 # corrugation depth
-    A_flow: float = 0.0
     UA: float = 0.0
     dp: float = 0.0
     mdot_nominal_ref:float = 0.0
@@ -100,6 +96,3 @@ class Outputs:
 
 if __name__ == '__main__':
     cond = Fluid_flow(Y='Water', T=300, p = 101300)
-    
-    cond.d = Aux_fn.PropCal(cond, 'D', 'T', 'P')
-    print(cond.d)
