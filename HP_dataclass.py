@@ -91,7 +91,6 @@ class Outputs:
     COP_h: float = 0.0
     cond_T_pp: float = 0.0
     evap_T_pp: float = 0.0
-    
     comp_eff_isen: float = 0.0    
 
 if __name__ == '__main__':
