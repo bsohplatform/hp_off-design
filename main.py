@@ -250,7 +250,7 @@ if __name__ == '__main__':
     cycle_inputs.BC = 'm'
     cycle_inputs.DSH = 5
     cycle_inputs.layout = 'bas'
-    cycle_inputs.M_ref = 0.2
+    cycle_inputs.M_ref = 0.25
     cycle_inputs.tol = 1.0e-2
     cycle_inputs.V_comp2cond = 0.0
     cycle_inputs.V_cond2tev = 0.0
@@ -258,12 +258,12 @@ if __name__ == '__main__':
     cycle_inputs.V_evap2comp = 0.0
 
     comp_inputs.mode = 'poly'
-    comp_inputs.n_poly = 1.4
+    comp_inputs.n_poly = 1.0
     comp_inputs.V_dis = 22.2e-6
     comp_inputs.V_free = 0.0
     comp_inputs.frequency = 50.0
     comp_inputs.C_gap = 0.05
-    comp_inputs.extra_work = 0.05
+    comp_inputs.extra_work = 0.42
     comp_inputs.V_oil = 0.0
     comp_inputs.frac_ref_in_oil = 0.2
 
@@ -284,10 +284,10 @@ if __name__ == '__main__':
     evap_inputs.A_flow = 1.01
     evap_inputs.type = 'phx'
     evap_inputs.cor = True
-    evap_inputs.mult_pri = 1.0
-    evap_inputs.mult_sec = 1.0
-    evap_inputs.mult_A = 1.0
-    evap_inputs.k = 0.01485
+    evap_inputs.mult_pri = 0.5
+    evap_inputs.mult_sec = 0.5
+    evap_inputs.mult_A = 0.9
+    evap_inputs.k = 237.0
 
     cond_inputs.N_element = 100
     cond_inputs.N_plate = 20
@@ -306,10 +306,10 @@ if __name__ == '__main__':
     cond_inputs.A_flow = 1.13
     cond_inputs.type = 'phx'
     cond_inputs.cor = True
-    cond_inputs.mult_pri = 1.0
-    cond_inputs.mult_sec = 1.0
-    cond_inputs.mult_A = 1.0
-    cond_inputs.k = 0.01485
+    cond_inputs.mult_pri = 0.7
+    cond_inputs.mult_sec = 0.7
+    cond_inputs.mult_A = 0.9
+    cond_inputs.k = 237.0
     
     outputs = Outputs()
     bas_off = VCHP_off(input_ref)
