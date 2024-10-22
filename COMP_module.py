@@ -62,13 +62,14 @@ class COMP_module:
             primary_out.Ts = PropsSI('T','P',primary_out.p, 'Q', 1.0, primary_out.Y)
         except:
             primary_out.Ts = PropsSI('TCRIT','',0,'',0,primary_out.Y)
+            
         if abs(primary_out.T - primary_out.Ts) < 0.1:
             DSH = DSH + 1.0
             a = 0
         else:
             a = 1
             
-            return (primary_in, primary_out, comp_W, comp_eff_isen, DSH, a)
+        return (primary_in, primary_out, comp_W, comp_eff_isen, DSH, a)
 
 if __name__ == '__main__':
     comp_in = Fluid_flow(Y='R410A', T=290.0, p = 1.0e6)

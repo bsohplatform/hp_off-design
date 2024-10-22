@@ -43,20 +43,29 @@ class VCHP_off:
         OutEvap = self.Basic_property(OutEvap)
         
         a_cond = 1
+        n_cond = 0
         while a_cond:
+            n_cond = n_cond+1
             a_evap = 1
+            n_evap = 0
             while a_evap:
+                n_evap = n_evap+1
                 (InCond_n, OutCond, InEvap_n, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs) = self.OffDesign_inner_solver(InCond_n, OutCond, InEvap_n, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, comp, cond, evap, Cycle_Inputs, Comp_Inputs, Cond_Inputs, Evap_Inputs, outputs)
                 err_evap = InEvap_n.T - InEvap.T
                 OutEvap.T = OutEvap.T - err_evap
-                if abs(err_evap) < 0.01:
+                if abs(err_evap) < 0.1:
+                    a_evap = 0
+                elif n_evap > 3:
                     a_evap = 0
             
             err_cond = InCond_n.T - InCond.T
             OutCond.T = OutCond.T - err_cond
-            if abs(err_cond) < 0.01:
-                a_cond = 0        
-        
+            if abs(err_cond) < 0.1:
+                a_cond = 0
+            elif n_cond > 3:
+                a_cond = 0
+                
+                    
         return (InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs)
         
     def OffDesign_inner_solver(self, InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, comp, cond, evap, Cycle_Inputs, Comp_Inputs, Cond_Inputs, Evap_Inputs, Outputs):
@@ -85,7 +94,7 @@ class VCHP_off:
                 InCond_REF.hl = PropsSI('H','P',InCond_REF.p,'Q',0.0, InCond_REF.Y )
                 InCond_REF.hg = PropsSI('H','P',InCond_REF.p,'Q',1.0, InCond_REF.Y )  
                         
-                (OutEvap_REF, InCond_REF, Outputs.comp_W, Outputs.comp_eff_isen, Outputs.DSH, a) = comp.Off(OutEvap_REF, InCond_REF, Comp_Inputs, Cycle_Inputs.DSH)
+                (OutEvap_REF, InCond_REF, Outputs.comp_W, Outputs.comp_eff_isen, Outputs.DSH, a_dsh) = comp.Off(OutEvap_REF, InCond_REF, Comp_Inputs, Cycle_Inputs.DSH)
                 OutCond_REF.m = InCond_REF.m
                 InEvap_REF.m = OutEvap_REF.m
                         
@@ -95,7 +104,10 @@ class VCHP_off:
                     (InCond_REF, OutCond_REF, InCond, OutCond, cond_Q, cond_rho, Outputs.cond_T_pp, err_p_cond)=cond.FTHX('cond',InCond_REF, OutCond_REF, InCond, OutCond)   
 
                 if err_p_cond == 1:
-                    cond_p_lb = 0.5*(cond_p_ub + cond_p_lb)
+                    cond_p_lb = min(cond_p_lb*1.01,PropsSI("P","T",OutEvap.T,"Q",0.0,InCond_REF.Y))
+                    print("!!응축기 온도 역전 발생!! %.2f[℃](냉매입구측), %.2f[℃](공정출구측)" %(InCond_REF.T-273.15, OutCond.T-273.15))
+                    print("!!냉매 고압 압력!! %.3f[bar]" %(InCond_REF.p/1.0e5))
+                    print("")
                     break
                 
                 InEvap_REF.p = OutEvap_P/(1-Evap_Inputs.dp)
@@ -110,7 +122,10 @@ class VCHP_off:
                     (InEvap_REF, OutEvap_REF, InEvap, OutEvap, evap_Q, evap_rho, Outputs.evap_T_pp, err_p_evap)=evap.FTHX('evap',InEvap_REF, OutEvap_REF, InEvap, OutEvap)
                 
                 if err_p_evap == 1:
-                    cond_p_ub = 0.5*(cond_p_ub + cond_p_lb) # upper boundary 엔탈피가 낮아야 온도 역전 방지 가능
+                    cond_p_ub = max(cond_p_ub*0.99, PropsSI("P","T",OutCond.T,"Q",1.0,InEvap_REF.Y))
+                    print("!!증발기 온도 역전 발생!! %.2f[℃](냉매입구측), %.2f[℃](공정출구측)" %(InEvap_REF.T-273.15, OutEvap.T-273.15))
+                    print("!!냉매 고압 압력!! %.3f[bar]" %(InCond_REF.p/1.0e5))
+                    print("")
                     break
                 
                 dsh = OutEvap_REF.T - PropsSI("T","P",OutEvap_REF.p,"Q",1.0,OutEvap_REF.Y)
@@ -125,39 +140,45 @@ class VCHP_off:
                     a_dsh = 0
                 elif (evap_p_ub - evap_p_lb)/101300 < Cycle_Inputs.tol:
                     a_dsh = 0
-
-            target = Cycle_Inputs.M_ref
-            M_comp2cond = Cycle_Inputs.V_comp2cond*PropsSI("D","H",InCond_REF.h,"P",InCond_REF.p, InCond_REF.Y)
-            M_cond2tev = Cycle_Inputs.V_cond2tev*PropsSI("D","H",OutCond_REF.h,"P",OutCond_REF.p, OutCond_REF.Y)
-            M_tev2evap = Cycle_Inputs.V_tev2evap*PropsSI("D","H",InEvap_REF.h, "P",InEvap_REF.p,InEvap_REF.Y)
-            M_evap2comp = Cycle_Inputs.V_evap2comp*PropsSI("D","H",OutEvap_REF.h, "P",OutEvap_REF.p,OutEvap_REF.Y)
-            
-            Outputs.M_cond = cond.V_p*cond_rho
-            Outputs.M_evap = evap.V_p*evap_rho
-            
-            if Comp_Inputs.type == 'low':
-                d_free_volume = PropsSI("D","T",OutEvap_REF.T,"P",OutEvap_REF.p,OutEvap_REF.Y)
-            else:
-                d_free_volume = PropsSI("D","T",InCond_REF.T,"P",InCond_REF.p,InCond_REF.Y)
+                                    
+                M_comp2cond = Cycle_Inputs.V_comp2cond*PropsSI("D","H",InCond_REF.h,"P",InCond_REF.p, InCond_REF.Y)
+                M_cond2tev = Cycle_Inputs.V_cond2tev*PropsSI("D","H",OutCond_REF.h,"P",OutCond_REF.p, OutCond_REF.Y)
+                M_tev2evap = Cycle_Inputs.V_tev2evap*PropsSI("D","H",InEvap_REF.h, "P",InEvap_REF.p,InEvap_REF.Y)
+                M_evap2comp = Cycle_Inputs.V_evap2comp*PropsSI("D","H",OutEvap_REF.h, "P",OutEvap_REF.p,OutEvap_REF.Y)
                 
-            Outputs.M_comp = Comp_Inputs.V_free*d_free_volume
-            Outputs.M_oil = Comp_Inputs.V_oil*Comp_Inputs.d_oil*Comp_Inputs.frac_ref_in_oil
-            Outputs.M_pipe = M_comp2cond+M_cond2tev+M_tev2evap+M_evap2comp
-            Outputs.M_ref = Outputs.M_cond+Outputs.M_evap+Outputs.M_comp+Outputs.M_oil+Outputs.M_pipe
-                                            
-            param = Outputs.M_ref
-            
-            err_m = param - target
-            
-            if err_m > 0:
-                cond_p_ub = 0.5*(cond_p_ub + cond_p_lb)
-            else:
-                cond_p_lb = 0.5*(cond_p_ub + cond_p_lb)
+                Outputs.M_cond = cond.V_p*cond_rho
+                Outputs.M_evap = evap.V_p*evap_rho
                 
-            if abs(err_m) < cycle_inputs.tol:
-                a_m = 0
-            elif (cond_p_ub - cond_p_lb)/101300 < Cycle_Inputs.tol:
-                a_m = 0
+                if Comp_Inputs.type == 'low':
+                    d_free_volume = PropsSI("D","T",OutEvap_REF.T,"P",OutEvap_REF.p,OutEvap_REF.Y)
+                else:
+                    d_free_volume = PropsSI("D","T",InCond_REF.T,"P",InCond_REF.p,InCond_REF.Y)
+                    
+                Outputs.M_comp = Comp_Inputs.V_free*d_free_volume
+                Outputs.M_oil = Comp_Inputs.V_oil*Comp_Inputs.d_oil*Comp_Inputs.frac_ref_in_oil
+                Outputs.M_pipe = M_comp2cond+M_cond2tev+M_tev2evap+M_evap2comp
+                Outputs.M_ref = Outputs.M_cond+Outputs.M_evap+Outputs.M_comp+Outputs.M_oil+Outputs.M_pipe
+            
+            if err_p_cond == 0 and err_p_evap == 0:
+                if Cycle_Inputs.BC == 'm':
+                    target = Cycle_Inputs.M_ref
+                    param = Outputs.M_ref
+                    err_m = (param - target)/target
+                    
+                elif Cycle_Inputs.BC == 'dsc':
+                    target = PropsSI("H","T",OutCond_REF.Ts-Cycle_Inputs.DSC,"P",OutCond_REF.p,OutCond_REF.Y)
+                    param = OutCond_REF.h
+                    err_m = (target - param)/1000
+                
+                if err_m > 0:
+                    cond_p_ub = 0.5*(cond_p_ub + cond_p_lb)
+                else:
+                    cond_p_lb = 0.5*(cond_p_ub + cond_p_lb)
+                    
+                if abs(err_m) < Cycle_Inputs.tol:
+                    a_m = 0
+                elif (cond_p_ub - cond_p_lb)/101300 < Cycle_Inputs.tol:
+                    a_m = 0
 
         Outputs.cond_x = (OutCond_REF.h - OutCond_REF.hl)/(OutCond_REF.hg - OutCond_REF.hl)
         Outputs.DSC = OutCond_REF.Ts - OutCond_REF.T
@@ -226,22 +247,23 @@ if __name__ == '__main__':
     InEvap = Fluid_flow(Y=evap_fluid,m=mevap, T=Tevap_in, p = Pevap)
     OutEvap = Fluid_flow(Y=evap_fluid,m=mevap, T=Tevap_out, p = Pevap)
     
+    cycle_inputs.BC = 'm'
     cycle_inputs.DSH = 5
     cycle_inputs.layout = 'bas'
     cycle_inputs.M_ref = 0.2
-    cycle_inputs.tol = 1.0e-4
+    cycle_inputs.tol = 1.0e-2
     cycle_inputs.V_comp2cond = 0.0
     cycle_inputs.V_cond2tev = 0.0
     cycle_inputs.V_tev2evap = 0.0
     cycle_inputs.V_evap2comp = 0.0
 
     comp_inputs.mode = 'poly'
-    comp_inputs.n_poly = 1.2
+    comp_inputs.n_poly = 1.4
     comp_inputs.V_dis = 22.2e-6
     comp_inputs.V_free = 0.0
     comp_inputs.frequency = 50.0
     comp_inputs.C_gap = 0.05
-    comp_inputs.extra_work = 0.2
+    comp_inputs.extra_work = 0.05
     comp_inputs.V_oil = 0.0
     comp_inputs.frac_ref_in_oil = 0.2
 
