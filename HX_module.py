@@ -27,8 +27,8 @@ class HX_module:
                 self.R_plate = self.phx_inputs.thk_plate/self.phx_inputs.k
                 self.A_flow = self.phx_inputs.L_width*self.phx_inputs.L_vert*(self.enlargement_p+self.enlargement_s)*min(self.phx_inputs.Nch_s,self.phx_inputs.Nch_p) if self.phx_inputs.A_flow == 0 else self.phx_inputs.A_flow
                 self.A_flow = self.A_flow*self.phx_inputs.mult_A
-                self.V_p = self.spacing_p*self.phx_inputs.L_width*self.phx_inputs.L_vert*self.phx_inputs.Nch_p
-                self.V_s = self.spacing_s*self.phx_inputs.L_width*self.phx_inputs.L_vert*self.phx_inputs.Nch_s
+                self.V_p = self.spacing_p*self.phx_inputs.L_width*self.phx_inputs.L_vert*self.phx_inputs.Nch_p if self.phx_inputs.V_p == 0 else self.phx_inputs.V_p
+                self.V_s = self.spacing_s*self.phx_inputs.L_width*self.phx_inputs.L_vert*self.phx_inputs.Nch_s if self.phx_inputs.V_s == 0 else self.phx_inputs.V_s
                 self.beta = 60.0 if self.phx_inputs.beta == 0 else self.phx_inputs.beta
             else:
                 self.V_p = 1.0
