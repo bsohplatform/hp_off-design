@@ -110,7 +110,7 @@ class VCHP_off:
                     (InCond_REF, OutCond_REF, InCond, OutCond, cond_Q, cond_rho, Outputs.cond_T_pp, err_p_cond)=cond.FTHX('cond',InCond_REF, OutCond_REF, InCond, OutCond)   
 
                 if err_p_cond == 1:
-                    comp_p_lb = min(comp_p_lb*1.01,PropsSI("P","T",OutEvap.T,"Q",0.0,InCond_REF.Y))
+                    comp_p_lb = 0.5*comp_p_lb+0.5*comp_p_ub
                     print("!!응축기 온도 역전 발생!! %.2f[℃](냉매입구측), %.2f[℃](공정출구측)" %(InCond_REF.T-273.15, OutCond.T-273.15))
                     print("!!냉매 고압 압력!! %.3f[bar]" %(InCond_REF.p/1.0e5))
                     print("")
@@ -129,11 +129,11 @@ class VCHP_off:
                 
                 if err_p_evap == 1:
                     #comp_p_ub = max(comp_p_ub*1.01, PropsSI("P","T",OutCond.T,"Q",1.0,InEvap_REF.Y))
-                    comp_p_lb = 0.5*(comp_p_ub+comp_p_lb)
+                    evap_p_ub = 0.5*evap_p_ub+0.5*evap_p_lb
+                    #comp_p_lb = 0.9999*comp_p_lb
                     print("!!증발기 온도 역전 발생!! %.2f[℃](냉매입구측), %.2f[℃](공정출구측)" %(InEvap_REF.T-273.15, OutEvap.T-273.15))
-                    print("!!냉매 고압 압력!! %.3f[bar]" %(InCond_REF.p/1.0e5))
+                    print("!!냉매 저압 압력!! %.3f[bar]" %(InEvap_REF.p/1.0e5))
                     print("")
-                    a_dsh = 0
                 
                 dsh = OutEvap_REF.T - PropsSI("T","P",OutEvap_REF.p,"Q",1.0,OutEvap_REF.Y)
                 err_dsh = OutEvap_REF.h - PropsSI("H","T",OutEvap_REF.Ts+Outputs.DSH,"P",OutEvap_REF.p,OutEvap_REF.Y)
@@ -166,26 +166,26 @@ class VCHP_off:
                 Outputs.M_pipe = M_comp2cond+M_cond2tev+M_tev2evap+M_evap2comp
                 Outputs.M_ref = Outputs.M_cond+Outputs.M_evap+Outputs.M_comp+Outputs.M_oil+Outputs.M_pipe
                 
-            if err_p_cond == 0 and err_p_evap == 0:
-                if Cycle_Inputs.BC == 'm':
-                    target = Cycle_Inputs.M_ref
-                    param = Outputs.M_ref
-                    err_m = (param - target)/target
-                    
-                elif Cycle_Inputs.BC == 'dsc':
-                    target = PropsSI("H","T",OutCond_REF.Ts-Cycle_Inputs.DSC,"P",OutCond_REF.p,OutCond_REF.Y)
-                    param = OutCond_REF.h
-                    err_m = (target - param)/1000
+            
+            if Cycle_Inputs.BC == 'm':
+                target = Cycle_Inputs.M_ref
+                param = Outputs.M_ref
+                err_m = (param - target)/target
                 
-                if err_m > 0:
-                    comp_p_ub = 0.5*(comp_p_ub + comp_p_lb)
-                else:
-                    comp_p_lb = 0.5*(comp_p_ub + comp_p_lb)
-                    
-                if abs(err_m) < Cycle_Inputs.tol:
-                    a_m = 0
-                elif (comp_p_ub - comp_p_lb)/101300 < Cycle_Inputs.tol:
-                    a_m = 0
+            elif Cycle_Inputs.BC == 'dsc':
+                target = PropsSI("H","T",OutCond_REF.Ts-Cycle_Inputs.DSC,"P",OutCond_REF.p,OutCond_REF.Y)
+                param = OutCond_REF.h
+                err_m = (target - param)/1000
+            
+            if err_m > 0:
+                comp_p_ub = 0.5*(comp_p_ub + comp_p_lb)
+            else:
+                comp_p_lb = 0.5*(comp_p_ub + comp_p_lb)
+                
+            if abs(err_m) < Cycle_Inputs.tol:
+                a_m = 0
+            elif (comp_p_ub - comp_p_lb)/101300 < Cycle_Inputs.tol:
+                a_m = 0
 
         Outputs.cond_x = (OutCond_REF.h - OutCond_REF.hl)/(OutCond_REF.hg - OutCond_REF.hl)
         Outputs.DSC = OutCond_REF.Ts - OutCond_REF.T
