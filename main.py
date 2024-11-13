@@ -111,9 +111,9 @@ class VCHP_off:
 
                 if err_p_cond == 1:
                     comp_p_lb = 0.5*comp_p_lb+0.5*comp_p_ub
-                    print("!!응축기 온도 역전 발생!! %.2f[℃](냉매입구측), %.2f[℃](공정출구측)" %(InCond_REF.T-273.15, OutCond.T-273.15))
-                    print("!!냉매 고압 압력!! %.3f[bar]" %(InCond_REF.p/1.0e5))
-                    print("")
+                    #print("!!응축기 온도 역전 발생!! %.2f[℃](냉매입구측), %.2f[℃](공정출구측)" %(InCond_REF.T-273.15, OutCond.T-273.15))
+                    #print("!!냉매 고압 압력!! %.3f[bar]" %(InCond_REF.p/1.0e5))
+                    #print("")
                     a_dsh = 0
                 
                 InEvap_REF.p = OutEvap_P/(1-Evap_Inputs.dp)
@@ -130,10 +130,11 @@ class VCHP_off:
                 if err_p_evap == 1:
                     #comp_p_ub = max(comp_p_ub*1.01, PropsSI("P","T",OutCond.T,"Q",1.0,InEvap_REF.Y))
                     evap_p_ub = 0.5*evap_p_ub+0.5*evap_p_lb
+                    #evap_p_lb = max(101300.0, 0.5*evap_p_lb)
                     #comp_p_lb = 0.9999*comp_p_lb
-                    print("!!증발기 온도 역전 발생!! %.2f[℃](냉매입구측), %.2f[℃](공정출구측)" %(InEvap_REF.T-273.15, OutEvap.T-273.15))
-                    print("!!냉매 저압 압력!! %.3f[bar]" %(InEvap_REF.p/1.0e5))
-                    print("")
+                    #print("!!증발기 온도 역전 발생!! %.2f[℃](냉매입구측), %.2f[℃](공정출구측)" %(InEvap_REF.T-273.15, OutEvap.T-273.15))
+                    #print("!!냉매 저압 압력!! %.3f[bar]" %(InEvap_REF.p/1.0e5))
+                    #print("")
                 
                 dsh = OutEvap_REF.T - PropsSI("T","P",OutEvap_REF.p,"Q",1.0,OutEvap_REF.Y)
                 err_dsh = OutEvap_REF.h - PropsSI("H","T",OutEvap_REF.Ts+Outputs.DSH,"P",OutEvap_REF.p,OutEvap_REF.Y)
@@ -143,7 +144,7 @@ class VCHP_off:
                 else:
                     evap_p_ub = 0.5*(evap_p_lb + evap_p_ub)
                 
-                if abs(err_dsh/1000) < Cycle_Inputs.tol:
+                if abs(err_dsh/1000) < Cycle_Inputs.tol and err_p_evap == 0:
                     a_dsh = 0
                 elif (evap_p_ub - evap_p_lb)/101300 < Cycle_Inputs.tol:
                     a_dsh = 0

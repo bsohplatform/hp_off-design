@@ -75,10 +75,10 @@ class COMP_module:
     def Interpol_map(self, x_list, y_list, x_now):
         if x_now < x_list[0]:
             y_now = y_list[0]
-            print('범위를 벗어났습니다.(Inner)')
+            #print('범위를 벗어났습니다.(Inner)')
         elif x_now > x_list[-1]:
             y_now = y_list[-1]
-            print('범위를 벗어났습니다.(Outer)')
+            #print('범위를 벗어났습니다.(Outer)')
         else:
             x_idx = [i for i in range(len(x_list)-1) if x_list[i] <= x_now < x_list[i+1]]
             y_now = (y_list[x_idx[0]+1]-y_list[x_idx[0]])/(x_list[x_idx[0]+1]-x_list[x_idx[0]])*(x_now-x_list[x_idx[0]])+y_list[x_idx[0]]
