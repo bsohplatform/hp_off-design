@@ -11,7 +11,6 @@ class VCHP_off:
     def Basic_property(self, Fluid_flow):
         Fluid_flow.c = PropsSI("C","T",Fluid_flow.T,"P",Fluid_flow.p,Fluid_flow.Y)
         Fluid_flow.v = PropsSI("V","T",Fluid_flow.T,"P",Fluid_flow.p,Fluid_flow.Y)
-        Fluid_flow.pr = PropsSI("Prandtl","T",Fluid_flow.T,"P",Fluid_flow.p,Fluid_flow.Y)
         Fluid_flow.l = PropsSI("L","T",Fluid_flow.T,"P",Fluid_flow.p,Fluid_flow.Y)
         Fluid_flow.d = PropsSI("D","T",Fluid_flow.T,"P",Fluid_flow.p,Fluid_flow.Y)
             
@@ -26,8 +25,8 @@ class VCHP_off:
         outputs = Outputs()
         
         comp = COMP_module(Comp_Inputs.mode)
-        cond = HX_module(hx_type=Cond_Inputs.htype, cor = Cond_Inputs.cor, Inputs=Cond_Inputs)
-        evap = HX_module(hx_type=Evap_Inputs.htype, cor = Evap_Inputs.cor, Inputs=Evap_Inputs)
+        cond = HX_module(Cond_Inputs.htype, Cond_Inputs)
+        evap = HX_module(Evap_Inputs.htype, Evap_Inputs)
         
         InCond_n = deepcopy(InCond)
         InEvap_n = deepcopy(InEvap)
@@ -215,8 +214,8 @@ class VCHP_off:
         print('compW: %5.3f [kW]'%(Outputs.comp_W/1.0e3))
         print('cond_Tpp: %5.3f [℃]'%(Outputs.cond_T_pp))
         print('evap_Tpp: %5.3f [℃]'%(Outputs.evap_T_pp))
-        print('cond_dp: %5.3f [-]'%((InCond_REF.p-OutCond_REF.p)/InCond_REF.p*100.0))
-        print('evap_dp: %5.3f [-]'%((InEvap_REF.p-OutEvap_REF.p)/OutEvap_REF.p*100.0))
+        print('cond_dp: %5.3f [bar]'%((InCond_REF.p-OutCond_REF.p)/100000.0))
+        print('evap_dp: %5.3f [bar]'%((InEvap_REF.p-OutEvap_REF.p)/100000.0))
         print('comp_eff: %5.3f [%%]'%(Outputs.comp_eff_isen*100))
         print('DSH: %5.3f [℃]'%(OutEvap_REF.T - PropsSI("T","P",OutEvap_REF.p,"Q",1.0,OutEvap_REF.Y)))
         print('DSC: %5.3f [℃]'%(PropsSI("T","P",OutCond_REF.p,"Q",1.0,OutCond_REF.Y)-OutCond_REF.T))
@@ -265,6 +264,7 @@ if __name__ == '__main__':
     cycle_inputs.V_cond2tev = 0.0
     cycle_inputs.V_tev2evap = 0.0
     cycle_inputs.V_evap2comp = 0.0
+    Cycle_Inputs.flowmeter_dp = 0.1
 
     comp_inputs.mode = 'poly'
     comp_inputs.n_poly = 1.0
@@ -279,20 +279,22 @@ if __name__ == '__main__':
     evap_inputs.N_element = 100
     evap_inputs.N_plate = 18
     evap_inputs.thk_plate = 0.00014
-    evap_inputs.pitch_p = 0.00234
-    evap_inputs.pitch_s = 0.00234
-    evap_inputs.crg_pitch_p = 3*evap_inputs.pitch_p
-    evap_inputs.crg_pitch_s = 3*evap_inputs.pitch_s
-    evap_inputs.enlargement_p = 1.13
-    evap_inputs.enlargement_s = 1.13
+    evap_inputs.depth_p = 0.00234
+    evap_inputs.depth_s = 0.00234
+    evap_inputs.crg_pitch_p = 3*evap_inputs.depth_p
+    evap_inputs.crg_pitch_s = 3*evap_inputs.depth_s
     evap_inputs.Nch_p = 8
     evap_inputs.Nch_s = 9
     evap_inputs.L_vert = 0.479
     evap_inputs.L_width = 0.117
     evap_inputs.beta = 60
     evap_inputs.A_flow = 1.01
+    evap_inputs.V_p = 0.0
+    evap_inputs.V_s = 0.0
     evap_inputs.type = 'phx'
-    evap_inputs.cor = True
+    evap_inputs.cor_1p = 'ACRC'
+    evap_inputs.cor_2p = 'longo'
+    evap_inputs.cor_s = 'ACRC'
     evap_inputs.mult_pri = 0.5
     evap_inputs.mult_sec = 0.5
     evap_inputs.mult_A = 0.9
@@ -301,20 +303,22 @@ if __name__ == '__main__':
     cond_inputs.N_element = 100
     cond_inputs.N_plate = 20
     cond_inputs.thk_plate = 0.00014
-    cond_inputs.pitch_p = 0.00234
-    cond_inputs.pitch_s = 0.00234
-    cond_inputs.crg_pitch_p = 3*cond_inputs.pitch_p
-    cond_inputs.crg_pitch_s = 3*cond_inputs.pitch_s
-    cond_inputs.enlargement_p = 1.17
-    cond_inputs.enlargement_s = 1.17
+    cond_inputs.depth_p = 0.00234
+    cond_inputs.depth_s = 0.00234
+    cond_inputs.crg_pitch_p = 3*cond_inputs.depth_p
+    cond_inputs.crg_pitch_s = 3*cond_inputs.depth_s
     cond_inputs.Nch_p = 9
     cond_inputs.Nch_s = 10
     cond_inputs.L_vert = 0.479
     cond_inputs.L_width = 0.117
     cond_inputs.beta = 60
     cond_inputs.A_flow = 1.13
+    cond_inputs.V_p = 0.0
+    cond_inputs.V_s = 0.0
     cond_inputs.type = 'phx'
-    cond_inputs.cor = True
+    cond_inputs.cor_1p = 'ACRC'
+    cond_inputs.cor_2p = 'longo'
+    cond_inputs.cor_s = 'ACRC'
     cond_inputs.mult_pri = 0.7
     cond_inputs.mult_sec = 0.7
     cond_inputs.mult_A = 0.9
@@ -322,8 +326,7 @@ if __name__ == '__main__':
     
     outputs = Outputs()
     bas_off = VCHP_off(input_ref)
-    (InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs) = bas_off.OffDesign_outer_solver(InCond, OutCond, InEvap, OutEvap, cycle_inputs, comp_inputs, cond_inputs, evap_inputs)
-    bas_off.Result_summary(InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs)
-
+    (InCond, OutCond, InEvap, OutEvap, OutComp_REF, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs) = bas_off.OffDesign_outer_solver(InCond, OutCond, InEvap, OutEvap, cycle_inputs, comp_inputs, cond_inputs, evap_inputs)
+    bas_off.Result_summary(InCond, OutCond, InEvap, OutEvap, OutComp_REF, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs)
     print('충진량 분포----전체: %.2f, 응축기: %.2f [g], 증발기: %.2f [g], 압축기: %.2f [g], 오일: %.2f [g], 배관: %.2f [g]' %(outputs.M_ref*1000, outputs.M_cond*1000, outputs.M_evap*1000, outputs.M_comp*1000, outputs.M_oil*1000, outputs.M_pipe*1000))
     print('충진량: %.2f [g/kW]' %(outputs.M_ref*1.0e6/outputs.cond_Q))

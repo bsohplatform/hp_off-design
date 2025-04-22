@@ -53,7 +53,7 @@ class PHX_Inputs:
     L_vert: float = 0.0 # Vertical length of PHE (Center to center of inlet and outlet ports)
     L_width: float = 0.0 # total horizontal length of PHE
     beta: float = 0.0 # chevron angle
-    UA: float = 0.0
+    U: float = 0.0
     dp: float = 0.0
     mdot_nominal_ref:float = 0.0
     cor: bool = False
