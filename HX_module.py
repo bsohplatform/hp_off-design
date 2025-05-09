@@ -118,6 +118,7 @@ class HX_module:
         dT = T_primary[0]-T_secondary[0]
         if (dT < 0.0 and purpose == 'cond') or (dT > 0.0 and purpose == 'evap'):
             err_index = 1 # Temperature Reverse
+            Q = 0
             mean_d = 0
             T_pp = 0
         else:
